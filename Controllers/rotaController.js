@@ -38,21 +38,30 @@ const updateRotaInfo = async (req, res) => {
       throw new CustomError.NotFoundError(`No rota with id: ${rotaId}`);
     }
 
-    //todo use middleware for this
-    // Check if the current user is authorized to update this rota
-    // if (rota.createdBy.toString() !== req.user.userId.toString()) {
-    //   throw new CustomError.UnauthorizedError(
-    //     "You are not authorized to update this rota"
-    //   );
-    // }
-
-    //console.log("data input", newRota[0].schedule);
-
-    // Update the rota object with new data
-    //rota.markModified("shifts"); // Example: markModified for nested array 'shifts'
-
-    console.log(newRota);
     rota.rotaData = newRota;
+    // Save the updated rota document
+    await rota.save();
+
+    res.status(StatusCodes.OK).json({ rota });
+  } catch (error) {
+    console.error("Error updating rota info:", error);
+    throw new CustomError.BadRequestError("Could not update rota info", error);
+  }
+};
+
+const publishRota = async (req, res) => {
+  const { id: rotaId } = req.params;
+  const { isPublished } = req.body;
+
+  try {
+    // Find the rota by ID and ensure it belongs to the current admin user
+    const rota = await Rota.findById(rotaId);
+
+    if (!rota) {
+      throw new CustomError.NotFoundError(`No rota with id: ${rotaId}`);
+    }
+
+    rota.published = isPublished;
     // Save the updated rota document
     await rota.save();
 
@@ -66,4 +75,5 @@ const updateRotaInfo = async (req, res) => {
 module.exports = {
   getRotaById,
   updateRotaInfo,
+  publishRota,
 };
