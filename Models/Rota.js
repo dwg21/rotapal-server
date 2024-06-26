@@ -3,22 +3,20 @@ const { Schema } = mongoose;
 
 const rotaSchema = new Schema({
   name: String,
+  weekStarting: String,
   published: { type: Boolean, default: false }, // Add the published field with default value false
   rotaData: [
     {
       employee: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" },
       employeeName: String,
       hourlyWage: Number,
-
       schedule: [
-        [
-          {
-            startTime: String,
-            endTime: String,
-            duration: Number,
-            _id: false, // Prevent creation of _id for each schedule object
-          },
-        ],
+        {
+          date: String,
+          startTime: String,
+          endTime: String,
+          duration: Number,
+        },
       ],
       _id: false, // Prevent creation of _id for each schedule object
     },

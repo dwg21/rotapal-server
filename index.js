@@ -38,6 +38,9 @@ app.use("/api/v1/users", userRouter);
 app.use("/api/v1/venue", venueRouter);
 app.use("/api/v1/rotas", rotaRouter);
 
+app.use(notFoundMiddleware);
+app.use(errorHandlerMiddleware);
+
 const port = process.env.PORT || 5000;
 const start = async () => {
   try {

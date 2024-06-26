@@ -21,6 +21,8 @@ const UserSchema = new mongoose.Schema({
     },
   },
 
+  employeeId: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" },
+
   password: {
     type: String,
     required: [true, "Please provide password "],
