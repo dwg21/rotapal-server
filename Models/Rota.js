@@ -5,6 +5,7 @@ const rotaSchema = new Schema({
   name: String,
   weekStarting: String,
   published: { type: Boolean, default: false }, // Add the published field with default value false
+  employees: [{ type: mongoose.Schema.Types.ObjectId, ref: "Employee" }],
   rotaData: [
     {
       employee: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" },

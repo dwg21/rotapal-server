@@ -98,6 +98,7 @@ const createVenue = async (req, res) => {
         weekStarting: `${startDate}`,
         rotaData: weekRotaData,
         venue: newVenue._id,
+        employees: createdEmployees.map((emp) => emp._id), // Add employee IDs to the rota
       });
 
       return newRota._id;

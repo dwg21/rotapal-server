@@ -1,5 +1,6 @@
 const Rota = require("../Models/Rota");
 const Venue = require("../Models/Venue");
+const Notification = require("../Models/Notification");
 const Employee = require("../Models/Employee");
 const { StatusCodes } = require("http-status-codes");
 const CustomError = require("../errors");
@@ -137,6 +138,23 @@ const publishRota = async (req, res) => {
 
     rota.published = isPublished;
     await rota.save();
+
+    if (isPublished) {
+      const message = `The rota for ${rota.weekStarting} has been published.`;
+      const link = `/employeerota/${rotaId}`;
+      const notifyType = "rota";
+      const senderId = null; // Assuming the system is sending the notification
+
+      const notifications = rota.employees.map((employeeId) => ({
+        message,
+        link,
+        notifyType,
+        senderId,
+        recipientId: employeeId,
+      }));
+
+      await Notification.insertMany(notifications);
+    }
 
     res.status(StatusCodes.OK).json({ rota });
   } catch (error) {
