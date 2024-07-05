@@ -6,6 +6,7 @@ const {
   publishRota,
   getRotasByEmployeeId,
   getRotaByVenueIdAndDate,
+  swapShifts,
 } = require("../Controllers/rotaController");
 
 const {
@@ -15,6 +16,7 @@ const {
 
 router.post("/rota", authenticateUser, getRotaByVenueIdAndDate);
 router.post("/rota/employee", authenticateUser, getRotasByEmployeeId);
+router.post("/rota/swapshifts", authenticateUser, swapShifts);
 
 router.get("/:id", authenticateUser, getRotaById);
 router.post("/:id", authenticateUser, authoriseVenueAdmin, updateRotaInfo);

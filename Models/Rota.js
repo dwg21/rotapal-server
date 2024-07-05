@@ -17,6 +17,7 @@ const rotaSchema = new Schema({
           startTime: String,
           endTime: String,
           duration: Number,
+          label: String,
         },
       ],
       _id: false, // Prevent creation of _id for each schedule object

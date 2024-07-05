@@ -24,6 +24,7 @@ const userRouter = require("./routes/userRoutes");
 const venueRouter = require("./routes/venueRoutes");
 const rotaRouter = require("./routes/rotaRoutes");
 const notficationRouter = require("./routes/notficationRoutes");
+const swapRouter = require("./routes/swapRoutes");
 
 //middleware
 const notFoundMiddleware = require("./middleware/not-found");
@@ -39,6 +40,7 @@ app.use("/api/v1/users", userRouter);
 app.use("/api/v1/venue", venueRouter);
 app.use("/api/v1/rotas", rotaRouter);
 app.use("/api/v1/notifcations", notficationRouter);
+app.use("/api/v1/swap", swapRouter);
 
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);

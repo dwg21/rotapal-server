@@ -1,5 +1,6 @@
 const Rota = require("../Models/Rota");
 const Venue = require("../Models/Venue");
+const ShiftSwapRequest = require("../Models/ShiftSwapRequest");
 const Notification = require("../Models/Notification");
 const Employee = require("../Models/Employee");
 const { StatusCodes } = require("http-status-codes");
@@ -141,7 +142,7 @@ const publishRota = async (req, res) => {
 
     if (isPublished) {
       const message = `The rota for ${rota.weekStarting} has been published.`;
-      const link = `/employeerota/${rotaId}`;
+      const link = `/employeerota/${rota.weekStarting}`;
       const notifyType = "rota";
       const senderId = null; // Assuming the system is sending the notification
 
@@ -165,10 +166,74 @@ const publishRota = async (req, res) => {
   }
 };
 
+async function swapShifts(req, res) {
+  try {
+    const { fromShiftId, toShiftId, venueId } = req.body;
+    console.log(fromShiftId, toShiftId, venueId);
+
+    // Fetch the rota that contains the shifts
+    const rota = await Rota.findOne({
+      "rotaData.schedule._id": { $in: [fromShiftId, toShiftId] },
+      venue: venueId,
+    });
+
+    if (!rota) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ message: "Rota not found" });
+    }
+
+    // Find the shifts in the rotaData
+    const fromEmployee = rota.rotaData.find((employee) =>
+      employee.schedule.some((shift) => shift._id.equals(fromShiftId))
+    );
+
+    const toEmployee = rota.rotaData.find((employee) =>
+      employee.schedule.some((shift) => shift._id.equals(toShiftId))
+    );
+
+    if (!fromEmployee || !toEmployee) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ message: "Shifts not found" });
+    }
+
+    const fromShiftData = fromEmployee.schedule.id(fromShiftId);
+    const toShiftData = toEmployee.schedule.id(toShiftId);
+
+    const detailedMessage = `${fromEmployee.employeeName} wants to swap their shift on ${fromShiftData.date} (${fromShiftData.startTime} - ${fromShiftData.endTime}) with ${toEmployee.employeeName}'s shift on ${toShiftData.date} (${toShiftData.startTime} - ${toShiftData.endTime})`;
+
+    // Create a shift swap request with the detailed message
+    const shiftSwapRequest = new ShiftSwapRequest({
+      fromShiftId,
+      toShiftId,
+      fromEmployeeId: fromEmployee.employee,
+      toEmployeeId: toEmployee.employee,
+      rotaId: rota._id,
+      venueId: venueId,
+      message: detailedMessage,
+      status: "Pending",
+    });
+
+    await shiftSwapRequest.save();
+    console.log(shiftSwapRequest);
+
+    res
+      .status(StatusCodes.OK)
+      .json({ message: "Shift swap request created", shiftSwapRequest });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ message: "An error occurred", error });
+  }
+}
+
 module.exports = {
   getRotaById,
   updateRotaInfo,
   publishRota,
   getRotasByEmployeeId,
   getRotaByVenueIdAndDate,
+  swapShifts,
 };
