@@ -248,6 +248,139 @@ const updateRota = async (req, res) => {
   res.status(StatusCodes.OK).json({ venue });
 };
 
+// Fetch common shifts for a venue
+const getCommonShifts = async (req, res) => {
+  const { venueId } = req.params;
+  console.log("hhe", venueId);
+
+  try {
+    const venue = await Venue.findById(venueId);
+    if (!venue) {
+      throw new CustomError.NotFoundError("Venue not found");
+    }
+
+    res.status(StatusCodes.OK).json({ commonShifts: venue.commonShifts });
+  } catch (error) {
+    console.error("Error fetching common shifts:", error.message);
+    res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ error: "Failed to fetch common shifts" });
+  }
+};
+
+// Add a new common shift to a venue
+const addCommonShift = async (req, res) => {
+  const { venueId } = req.params;
+  const { shift } = req.body;
+
+  try {
+    const venue = await Venue.findById(venueId);
+    if (!venue) {
+      throw new CustomError.NotFoundError("Venue not found");
+    }
+
+    venue.commonShifts.push(shift);
+    await venue.save();
+
+    res.status(StatusCodes.OK).json({ commonShifts: venue.commonShifts });
+  } catch (error) {
+    console.error("Error adding common shift:", error.message);
+    res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ error: "Failed to add common shift" });
+  }
+};
+
+// Remove a common shift from a venue
+const removeCommonShift = async (req, res) => {
+  const { venueId, shiftId } = req.params;
+
+  try {
+    const venue = await Venue.findById(venueId);
+    if (!venue) {
+      throw new CustomError.NotFoundError("Venue not found");
+    }
+
+    venue.commonShifts = venue.commonShifts.filter(
+      (shift) => shift.id !== shiftId
+    );
+    await venue.save();
+
+    res.status(StatusCodes.OK).json({ commonShifts: venue.commonShifts });
+  } catch (error) {
+    console.error("Error removing common shift:", error.message);
+    res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ error: "Failed to remove common shift" });
+  }
+};
+
+// Fetch common shifts for a venue
+const getCommonRotas = async (req, res) => {
+  const { venueId } = req.params;
+  console.log("hhe", venueId);
+
+  try {
+    const venue = await Venue.findById(venueId);
+    if (!venue) {
+      throw new CustomError.NotFoundError("Venue not found");
+    }
+
+    res.status(StatusCodes.OK).json({ commonRotas: venue.commonRotas });
+  } catch (error) {
+    console.error("Error fetching common shifts:", error.message);
+    res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ error: "Failed to fetch common shifts" });
+  }
+};
+
+// Add a new common shift to a venue
+const addCommonRota = async (req, res) => {
+  const { venueId } = req.params;
+  const { rota } = req.body;
+
+  try {
+    const venue = await Venue.findById(venueId);
+    if (!venue) {
+      throw new CustomError.NotFoundError("Venue not found");
+    }
+
+    venue.commonRotas.push(rota);
+    await venue.save();
+
+    res.status(StatusCodes.OK).json({ commonRotas: venue.commonRotas });
+  } catch (error) {
+    console.error("Error adding common shift:", error.message);
+    res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ error: "Failed to add common shift" });
+  }
+};
+
+const removeCommonRota = async (req, res) => {
+  const { venueId, rotaId } = req.params;
+
+  try {
+    const venue = await Venue.findById(venueId);
+    if (!venue) {
+      throw new CustomError.NotFoundError("Venue not found");
+    }
+
+    venue.commonRotas = venue.commonRotas.filter(
+      (shift) => shift.id !== rotaId
+    );
+    await venue.save();
+
+    res.status(StatusCodes.OK).json({ commonRotas: venue.commonRotas });
+  } catch (error) {
+    console.error("Error removing common shift:", error.message);
+    res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ error: "Failed to remove common shift" });
+  }
+};
+
 module.exports = {
   createVenue,
   getAllVenues,
@@ -259,4 +392,10 @@ module.exports = {
   addShift,
   removeShift,
   updateRota,
+  getCommonShifts,
+  addCommonShift,
+  removeCommonShift,
+  getCommonRotas,
+  addCommonRota,
+  removeCommonRota,
 };

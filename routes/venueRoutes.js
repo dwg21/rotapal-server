@@ -12,6 +12,12 @@ const {
   addShift,
   removeShift,
   updateRota,
+  getCommonShifts,
+  addCommonShift,
+  removeCommonShift,
+  getCommonRotas,
+  addCommonRota,
+  removeCommonRota,
 } = require("../Controllers/venueController");
 
 const {
@@ -35,5 +41,17 @@ router.delete(
   removeShift
 );
 router.route("/venues/:id/rota").patch(authenticateUser, updateRota); // New route for updating rota
+
+router.get("/:venueId/common-shifts", authenticateUser, getCommonShifts);
+
+router.post("/:venueId/common-shifts", authenticateUser, addCommonShift);
+
+router.delete("/:venueId/common-shifts/:shiftId", removeCommonShift);
+
+router.get("/:venueId/common-rotas", authenticateUser, getCommonRotas);
+
+router.post("/:venueId/common-rotas", authenticateUser, addCommonRota);
+
+router.delete("/:venueId/common-rotas/:rotaId", removeCommonRota);
 
 module.exports = router;

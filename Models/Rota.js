@@ -18,6 +18,7 @@ const rotaSchema = new Schema({
           endTime: String,
           duration: Number,
           label: String,
+          holidayBooked: { type: Boolean, default: false },
         },
       ],
       _id: false, // Prevent creation of _id for each schedule object

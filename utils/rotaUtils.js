@@ -1,4 +1,5 @@
 const { startOfWeek, addDays, addWeeks, format } = require("date-fns");
+const Holiday = require("../Models/Holiday");
 
 // Function to generate weeks for the next 4 weeks starting from the Monday of the current week
 // const generateWeeks = () => {
@@ -20,16 +21,62 @@ const createRota = (employees, weekData) => {
     employee: employee._id,
     schedule: weekData.map((date) => ({
       date,
-      startTime: "09:00",
-      endTime: "17:00",
+      startTime: "",
+      endTime: "",
       duration: 8,
+      holidayBooked: false,
     })),
     hourlyWage: employee.hourlyWage,
     employeeName: employee.name,
   }));
 };
 
-//todo add date into shedule.
+// const createRota = async (employees, weekData) => {
+//   const rotaData = [];
+
+//   for (const employee of employees) {
+//     // Fetch holidays for the current employee within the weekData range
+//     const holidays = await Holiday.find({
+//       user: employee.userId,
+//       date: { $in: weekData },
+//     });
+//     // Extract dates of the holidays
+//     const holidayDates = holidays.map((holiday) => holiday.date);
+
+//     const schedule = weekData.map((date) => {
+//       if (holidayDates.includes(date)) {
+//         // If the date is a holiday, mark it as a holiday
+//         return {
+//           date,
+//           startTime: null,
+//           endTime: null,
+//           duration: 0,
+//           label: "Holiday",
+//           holidayBooked: true,
+//         };
+//       }
+//       // Otherwise, use the default work schedule
+//       return {
+//         date,
+//         startTime: "09:00",
+//         endTime: "17:00",
+//         duration: 8,
+//         holidayBooked: false,
+//       };
+//     });
+
+//     rotaData.push({
+//       employee: employee._id,
+//       schedule,
+//       hourlyWage: employee.hourlyWage,
+//       employeeName: employee.name,
+//     });
+//   }
+
+//   return rotaData;
+// };
+
+//attempt 3
 
 const generateWeeks = () => {
   const weeks = [];

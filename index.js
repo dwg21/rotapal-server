@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const { checkAndCreateRotas } = require("./scheduler");
 require("dotenv").config();
 
 const app = express();
@@ -9,6 +10,8 @@ const app = express();
 app.use(cors({ credentials: true, origin: "http://127.0.0.1:5173" }));
 
 app.use(express.json());
+
+checkAndCreateRotas();
 
 const connectDB = (url) => {
   return mongoose.connect(url);
@@ -25,6 +28,7 @@ const venueRouter = require("./routes/venueRoutes");
 const rotaRouter = require("./routes/rotaRoutes");
 const notficationRouter = require("./routes/notficationRoutes");
 const swapRouter = require("./routes/swapRoutes");
+const holidayRouter = require("./routes/holidayRoutes");
 
 //middleware
 const notFoundMiddleware = require("./middleware/not-found");
@@ -41,6 +45,7 @@ app.use("/api/v1/venue", venueRouter);
 app.use("/api/v1/rotas", rotaRouter);
 app.use("/api/v1/notifcations", notficationRouter);
 app.use("/api/v1/swap", swapRouter);
+app.use("/api/v1/holidays", holidayRouter);
 
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);

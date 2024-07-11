@@ -99,12 +99,40 @@ const getRotaById = async (req, res) => {
   }
 };
 
+// const updateRotaInfo = async (req, res) => {
+//   const { id: rotaId } = req.params;
+//   const { newRota } = req.body;
+
+//   console.log(newRota[1].schedule);
+
+//   try {
+//     const rota = await Rota.findById(rotaId);
+
+//     if (!rota) {
+//       return res
+//         .status(StatusCodes.NOT_FOUND)
+//         .json({ message: `No rota with id: ${rotaId}` });
+//     }
+
+//     rota.rotaData = newRota;
+//     await rota.save();
+
+//     res.status(StatusCodes.OK).json({ rota });
+//   } catch (error) {
+//     console.error("Error updating rota info:", error);
+//     res
+//       .status(StatusCodes.BAD_REQUEST)
+//       .json({ message: "Could not update rota info" });
+//   }
+// };
+
 const updateRotaInfo = async (req, res) => {
   const { id: rotaId } = req.params;
   const { newRota } = req.body;
 
   try {
     const rota = await Rota.findById(rotaId);
+    console.log("hhdh", rota);
 
     if (!rota) {
       return res
@@ -112,7 +140,25 @@ const updateRotaInfo = async (req, res) => {
         .json({ message: `No rota with id: ${rotaId}` });
     }
 
-    rota.rotaData = newRota;
+    // Update rotaData by preserving existing holidayBooked entries
+    rota.rotaData.forEach((employeeRota, index) => {
+      const newEmployeeRota = newRota.find(
+        (newRotaEntry) =>
+          String(newRotaEntry.employee) === String(employeeRota.employee)
+      );
+
+      console.log(newEmployeeRota);
+
+      if (newEmployeeRota) {
+        employeeRota.schedule.forEach((scheduleEntry, scheduleIndex) => {
+          if (!scheduleEntry.holidayBooked) {
+            employeeRota.schedule[scheduleIndex] =
+              newEmployeeRota.schedule[scheduleIndex];
+          }
+        });
+      }
+    });
+
     await rota.save();
 
     res.status(StatusCodes.OK).json({ rota });
@@ -123,6 +169,8 @@ const updateRotaInfo = async (req, res) => {
       .json({ message: "Could not update rota info" });
   }
 };
+
+module.exports = { updateRotaInfo };
 
 const publishRota = async (req, res) => {
   const { id: rotaId } = req.params;

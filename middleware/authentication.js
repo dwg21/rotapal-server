@@ -1,4 +1,5 @@
 const CustomErr = require("../errors");
+const { UnauthorizedError } = require("../errors");
 const { isTokenValid } = require("../utils");
 const Venue = require("../Models/Venue");
 const Rota = require("../Models/Rota");
@@ -9,7 +10,9 @@ const authenticateUser = async (req, res, next) => {
 
   if (!token) {
     console.log("No token found in cookies");
-    return next(new CustomErr.UnauthenticatedError("Authentication invalid"));
+    const error = new Error("Authentication invalid");
+    error.statusCode = 401; // HTTP Status Code for Unauthorized
+    return next(error);
   }
 
   try {
@@ -23,7 +26,9 @@ const authenticateUser = async (req, res, next) => {
     next();
   } catch (error) {
     console.log("Token validation failed:", error);
-    return next(new CustomErr.UnauthenticatedError("Authentication invalid"));
+    const authError = new Error("Authentication invalid");
+    authError.statusCode = 401; // HTTP Status Code for Unauthorized
+    return next(authError);
   }
 };
 
@@ -31,31 +36,39 @@ const authenticateUser = async (req, res, next) => {
 const authoriseVenueAdmin = async (req, res, next) => {
   if (!req.user) {
     console.error("req.user is undefined");
-    return next(new CustomErr.UnauthorizedError("Authentication required"));
+    const authError = new Error("Authentication invalid");
+    authError.statusCode = 401; // HTTP Status Code for Unauthorized
+    return next(authError);
   }
 
   const { userId, role } = req.user;
   const { id: rotaId } = req.params;
 
   if (role !== "admin") {
-    return next(new CustomErr.UnauthorizedError("Not authorized"));
+    const authError = new Error("Authentication invalid");
+    authError.statusCode = 401; // HTTP Status Code for Unauthorized
+    return next(authError);
   }
 
   try {
     const rota = await Rota.findById(rotaId);
     if (!rota) {
-      return next(new CustomErr.NotFoundError("Rota not found"));
+      const authError = new Error("Authentication invalid");
+      authError.statusCode = 401; // HTTP Status Code for Unauthorized
+      return next(authError);
     }
 
     const venue = await Venue.findById(rota.venue);
     if (!venue) {
-      return next(new CustomErr.NotFoundError("Venue not found"));
+      const authError = new Error("Authentication invalid");
+      authError.statusCode = 401; // HTTP Status Code for Unauthorized
+      return next(authError);
     }
 
     if (venue.createdBy.toString() !== userId) {
-      return next(
-        new CustomErr.UnauthorizedError("Not authorized to access this venue")
-      );
+      const authError = new Error("Authentication invalid");
+      authError.statusCode = 401; // HTTP Status Code for Unauthorized
+      return next(authError);
     }
 
     next();
@@ -69,9 +82,9 @@ const authoriseVenueAdmin = async (req, res, next) => {
 const authorisePermissions = (...roles) => {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
-      return next(
-        new CustomErr.UnauthorizedError("Unauthorized to access this route")
-      );
+      const authError = new Error("Authentication invalid");
+      authError.statusCode = 401; // HTTP Status Code for Unauthorized
+      return next(authError);
     }
     next();
   };
