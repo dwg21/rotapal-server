@@ -4,6 +4,7 @@ const { Schema } = mongoose;
 const rotaSchema = new Schema({
   name: String,
   weekStarting: String,
+  archived: { type: Boolean, default: false }, // true when rota is expired
   published: { type: Boolean, default: false }, // Add the published field with default value false
   employees: [{ type: mongoose.Schema.Types.ObjectId, ref: "Employee" }],
   rotaData: [
@@ -14,10 +15,7 @@ const rotaSchema = new Schema({
       schedule: [
         {
           date: String,
-          startTime: String,
-          endTime: String,
-          duration: Number,
-          label: String,
+          shiftData: { startTime: String, endTime: String, label: String },
           holidayBooked: { type: Boolean, default: false },
         },
       ],

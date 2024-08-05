@@ -21,9 +21,7 @@ const createRota = (employees, weekData) => {
     employee: employee._id,
     schedule: weekData.map((date) => ({
       date,
-      startTime: "",
-      endTime: "",
-      duration: 8,
+      shiftData: { startTime: "", endTime: "", label: "" },
       holidayBooked: false,
     })),
     hourlyWage: employee.hourlyWage,
@@ -78,18 +76,27 @@ const createRota = (employees, weekData) => {
 
 //attempt 3
 
-const generateWeeks = () => {
+//ToDo change name to genrateDates?
+const generateWeeks = (specificDate = null, numberOfWeeks = 4) => {
   const weeks = [];
-  const startDate = startOfWeek(new Date(), { weekStartsOn: 1 });
-  for (let i = 0; i < 4; i++) {
+  const startDate = specificDate
+    ? startOfWeek(new Date(specificDate), { weekStartsOn: 1 })
+    : startOfWeek(new Date(), { weekStartsOn: 1 });
+
+  for (let i = 0; i < numberOfWeeks; i++) {
     const week = [];
     for (let j = 0; j < 7; j++) {
       week.push(format(addDays(addWeeks(startDate, i), j), "yyyy-MM-dd"));
     }
     weeks.push({ startDate: week[0], days: week });
   }
+
   return weeks;
 };
+
+// Example usage:
+//console.log(generateWeeks()); // Generates 4 weeks from the current date
+//console.log(generateWeeks("2023-07-11", 1)); // Generates 1 week from the specific date '2023-07-11'
 
 // const createRota = (employees, weekData) => {
 //   console.log(employees, weekData);

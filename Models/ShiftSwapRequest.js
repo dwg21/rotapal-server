@@ -23,8 +23,8 @@ const shiftSwapRequestSchema = new Schema({
   },
   status: {
     type: String,
-    enum: ["Pending", "Approved", "Declined"],
-    default: "Pending",
+    enum: ["EmployeePending", "AdminPending", "Approved", "Declined"],
+    default: "EmployeePending",
   },
   message: {
     type: String,

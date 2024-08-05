@@ -4,6 +4,9 @@ const {
   approveShiftSwap,
   declineShiftSwap,
   getPendingRequests,
+  sendShiftSwapRequest,
+  getEmployeeRequests,
+  employeeAproveShiftSwap,
 } = require("../Controllers/shiftSwapController");
 
 const {
@@ -13,7 +16,17 @@ const {
 
 // toDo fix authroise venue admin
 
+router.post("/swapShiftRequest", authenticateUser, sendShiftSwapRequest);
+
 router.get("/pendingShiftSwapRequests", authenticateUser, getPendingRequests);
+
+router.get("/getEmployeeRequests", authenticateUser, getEmployeeRequests);
+
+router.put(
+  "/employeeAproveShiftSwap/:requestId",
+  authenticateUser,
+  employeeAproveShiftSwap
+);
 
 router.put("/approveShiftSwap/:requestId", authenticateUser, approveShiftSwap);
 

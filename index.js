@@ -1,7 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const { checkAndCreateRotas } = require("./scheduler");
+const { checkAndCreateRotas, checkRotasExpired } = require("./scheduler");
 require("dotenv").config();
 
 const app = express();
@@ -12,6 +12,7 @@ app.use(cors({ credentials: true, origin: "http://127.0.0.1:5173" }));
 app.use(express.json());
 
 checkAndCreateRotas();
+checkRotasExpired();
 
 const connectDB = (url) => {
   return mongoose.connect(url);

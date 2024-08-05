@@ -2,17 +2,92 @@ const ShiftSwapRequest = require("../Models/ShiftSwapRequest");
 const Rota = require("../Models/Rota");
 const { StatusCodes } = require("http-status-codes");
 const Notification = require("../Models/Notification");
+const User = require("../Models/User");
 
-async function getPendingRequests(req, res) {
-  console.log("hellp");
+const sendShiftSwapRequest = async (req, res) => {
+  try {
+    const { fromShiftId, toShiftId, venueId } = req.body;
+    console.log(fromShiftId, toShiftId, venueId);
+
+    // Fetch the rota that contains the shifts
+    const rota = await Rota.findOne({
+      "rotaData.schedule._id": { $in: [fromShiftId, toShiftId] },
+      venue: venueId,
+    });
+
+    if (!rota) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ message: "Rota not found" });
+    }
+
+    // Find the shifts in the rotaData
+    const fromEmployee = rota.rotaData.find((employee) =>
+      employee.schedule.some((shift) => shift._id.equals(fromShiftId))
+    );
+
+    const toEmployee = rota.rotaData.find((employee) =>
+      employee.schedule.some((shift) => shift._id.equals(toShiftId))
+    );
+
+    if (!fromEmployee || !toEmployee) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ message: "Shifts not found" });
+    }
+
+    const fromShiftData = fromEmployee.schedule.id(fromShiftId);
+    const toShiftData = toEmployee.schedule.id(toShiftId);
+
+    // Check if the shift dates are in the future
+    const currentDate = new Date();
+    const fromShiftDate = new Date(fromShiftData.date);
+    const toShiftDate = new Date(toShiftData.date);
+
+    if (fromShiftDate <= currentDate || toShiftDate <= currentDate) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json({ message: "Shifts must be in the future" });
+    }
+
+    const detailedMessage = `${fromEmployee.employeeName} wants to swap their shift on ${fromShiftData.date} (${fromShiftData.shiftData.startTime} - ${fromShiftData.shiftData.endTime}) with ${toEmployee.employeeName}'s shift on ${toShiftData.date} (${toShiftData.shiftData.startTime} - ${toShiftData.shiftData.endTime})`;
+
+    // Create a shift swap request with the detailed message
+    const shiftSwapRequest = new ShiftSwapRequest({
+      fromShiftId,
+      toShiftId,
+      fromEmployeeId: fromEmployee.employee,
+      toEmployeeId: toEmployee.employee,
+      rotaId: rota._id,
+      venueId: venueId,
+      message: detailedMessage,
+    });
+
+    await shiftSwapRequest.save();
+    console.log(shiftSwapRequest);
+
+    res
+      .status(StatusCodes.OK)
+      .json({ message: "Shift swap request created", shiftSwapRequest });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ message: "An error occurred", error });
+  }
+};
+
+//Returns any request that have been approed by employee
+const getPendingRequests = async (req, res) => {
   try {
     const { venueId } = req.query;
     console.log(venueId);
 
     const requests = await ShiftSwapRequest.find({
-      status: "Pending",
+      status: "AdminPending",
       venueId,
     }).populate("fromEmployeeId toEmployeeId rotaId");
+
     res.status(StatusCodes.OK).json(requests);
   } catch (error) {
     console.error(error);
@@ -20,61 +95,28 @@ async function getPendingRequests(req, res) {
       .status(StatusCodes.INTERNAL_SERVER_ERROR)
       .json({ message: "An error occurred", error });
   }
-}
+};
 
-// async function getPendingRequests(req, res) {
-//   try {
-//     const { venueId } = req.query;
+const employeeAproveShiftSwap = async (req, res) => {
+  // Fetch the shift swap request
+  const { requestId } = req.params;
+  const request = await ShiftSwapRequest.findById(requestId);
 
-//     const requests = await ShiftSwapRequest.find({ status: "Pending", venueId })
-//       .populate("fromEmployeeId toEmployeeId rotaId")
-//       .lean();
+  if (!request) {
+    return res
+      .status(StatusCodes.NOT_FOUND)
+      .json({ message: "Shift swap request not found" });
+  }
 
-//     const detailedRequests = requests.map((request) => {
-//       const fromEmployee = request.rotaId.rotaData.find((employee) =>
-//         employee.schedule.some((shift) => shift._id.equals(request.fromShiftId))
-//       );
+  request.status = "AdminPending";
 
-//       const toEmployee = request.rotaId.rotaData.find((employee) =>
-//         employee.schedule.some((shift) => shift._id.equals(request.toShiftId))
-//       );
+  request.save();
+  res
+    .status(StatusCodes.OK)
+    .json({ message: "Shift swap approved by employee", request });
+};
 
-//       const fromShift = fromEmployee.schedule.find((shift) =>
-//         shift._id.equals(request.fromShiftId)
-//       );
-//       const toShift = toEmployee.schedule.find((shift) =>
-//         shift._id.equals(request.toShiftId)
-//       );
-
-//       return {
-//         ...request,
-//         fromShiftDetails: {
-//           date: fromShift.date,
-//           startTime: fromShift.startTime,
-//           endTime: fromShift.endTime,
-//           duration: fromShift.duration,
-//           label: fromShift.label,
-//         },
-//         toShiftDetails: {
-//           date: toShift.date,
-//           startTime: toShift.startTime,
-//           endTime: toShift.endTime,
-//           duration: toShift.duration,
-//           label: toShift.label,
-//         },
-//       };
-//     });
-
-//     res.status(StatusCodes.OK).json(detailedRequests);
-//   } catch (error) {
-//     console.error(error);
-//     res
-//       .status(StatusCodes.INTERNAL_SERVER_ERROR)
-//       .json({ message: "An error occurred", error });
-//   }
-// }
-
-async function approveShiftSwap(req, res) {
+const approveShiftSwap = async (req, res) => {
   try {
     const { requestId } = req.params;
 
@@ -118,17 +160,32 @@ async function approveShiftSwap(req, res) {
         .json({ message: "Shifts not found" });
     }
 
-    const fromShift = fromEmployee.schedule.id(request.fromShiftId);
-    const toShift = toEmployee.schedule.id(request.toShiftId);
+    const fromShiftIndex = fromEmployee.schedule.findIndex((shift) =>
+      shift._id.equals(request.fromShiftId)
+    );
+    const toShiftIndex = toEmployee.schedule.findIndex((shift) =>
+      shift._id.equals(request.toShiftId)
+    );
+
+    if (fromShiftIndex === -1 || toShiftIndex === -1) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ message: "Shifts not found in the employee schedules" });
+    }
+
+    const fromShift = fromEmployee.schedule[fromShiftIndex];
+    const toShift = toEmployee.schedule[toShiftIndex];
+
+    if (fromShift.holidayBooked || toShift.holidayBooked) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json({ message: "Can not swap booked holidays" });
+    }
 
     // Swap the shifts
-    [fromShift.startTime, toShift.startTime] = [
-      toShift.startTime,
-      fromShift.startTime,
-    ];
-    [fromShift.endTime, toShift.endTime] = [toShift.endTime, fromShift.endTime];
-    [fromShift.date, toShift.date] = [toShift.date, fromShift.date];
-    [fromShift.label, toShift.label] = [toShift.label, fromShift.label];
+    const tempShiftData = { ...fromShift.shiftData };
+    fromShift.shiftData = { ...toShift.shiftData };
+    toShift.shiftData = { ...tempShiftData };
 
     await rota.save();
 
@@ -137,8 +194,8 @@ async function approveShiftSwap(req, res) {
     await request.save();
 
     // Create and send notifications
-    const fromMessage = `Your shift on ${fromShift.date} (${fromShift.startTime} - ${fromShift.endTime}) has been swapped with ${toEmployee.employeeName}'s shift on ${toShift.date} (${toShift.startTime} - ${toShift.endTime}).`;
-    const toMessage = `Your shift on ${toShift.date} (${toShift.startTime} - ${toShift.endTime}) has been swapped with ${fromEmployee.employeeName}'s shift on ${fromShift.date} (${fromShift.startTime} - ${fromShift.endTime}).`;
+    const fromMessage = `Your shift on ${fromShift.date} (${fromShift.shiftData.startTime} - ${fromShift.shiftData.endTime}) has been swapped with ${toEmployee.employeeName}'s shift on ${toShift.date} (${toShift.shiftData.startTime} - ${toShift.shiftData.endTime}).`;
+    const toMessage = `Your shift on ${toShift.date} (${toShift.shiftData.startTime} - ${toShift.shiftData.endTime}) has been swapped with ${fromEmployee.employeeName}'s shift on ${fromShift.date} (${fromShift.shiftData.startTime} - ${fromShift.shiftData.endTime}).`;
     const link = `/shiftswap/${requestId}`;
     const notifyType = "rota";
     const senderId = null; // System notification
@@ -169,7 +226,7 @@ async function approveShiftSwap(req, res) {
       .status(StatusCodes.INTERNAL_SERVER_ERROR)
       .json({ message: "An error occurred", error });
   }
-}
+};
 
 async function declineShiftSwap(req, res) {
   try {
@@ -220,8 +277,38 @@ async function declineShiftSwap(req, res) {
   }
 }
 
+const getEmployeeRequests = async (req, res) => {
+  try {
+    const { userId } = req.user;
+    console.log(userId);
+
+    const user = await User.findById(userId);
+
+    const requests = await ShiftSwapRequest.find({
+      toEmployeeId: user.employeeId,
+      status: "EmployeePending",
+    }).populate("fromEmployeeId toEmployeeId rotaId");
+
+    if (!requests) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ message: "Shift swap requests not found" });
+    }
+
+    res.status(StatusCodes.OK).json(requests);
+  } catch (error) {
+    console.error(error);
+    res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ message: "An error occurred", error });
+  }
+};
+
 module.exports = {
+  sendShiftSwapRequest,
   getPendingRequests,
   approveShiftSwap,
   declineShiftSwap,
+  getEmployeeRequests,
+  employeeAproveShiftSwap,
 };

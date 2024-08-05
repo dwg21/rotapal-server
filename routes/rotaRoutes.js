@@ -6,7 +6,8 @@ const {
   publishRota,
   getRotasByEmployeeId,
   getRotaByVenueIdAndDate,
-  swapShifts,
+  generateNewRota,
+  getArchivedRotasbyVenueId,
 } = require("../Controllers/rotaController");
 
 const {
@@ -14,12 +15,15 @@ const {
   authenticateUser,
 } = require("../middleware/authentication");
 
+router.post("/archivedRoas", authenticateUser, getArchivedRotasbyVenueId);
 router.post("/rota", authenticateUser, getRotaByVenueIdAndDate);
+
+router.post("/rota/generateRota", authenticateUser, generateNewRota);
+
 router.post("/rota/employee", authenticateUser, getRotasByEmployeeId);
-router.post("/rota/swapshifts", authenticateUser, swapShifts);
 
 router.get("/:id", authenticateUser, getRotaById);
-router.post("/:id", authenticateUser, authoriseVenueAdmin, updateRotaInfo);
-router.post("/:id/publish", authenticateUser, authoriseVenueAdmin, publishRota);
+router.post("/:id", authenticateUser, updateRotaInfo);
+router.post("/:id/publish", authenticateUser, publishRota);
 
 module.exports = router;

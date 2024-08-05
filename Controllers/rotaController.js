@@ -5,6 +5,8 @@ const Notification = require("../Models/Notification");
 const Employee = require("../Models/Employee");
 const { StatusCodes } = require("http-status-codes");
 const CustomError = require("../errors");
+const { generateWeeks, createRota } = require("../utils/rotaUtils");
+const { trusted } = require("mongoose");
 
 const getRotasByEmployeeId = async (req, res) => {
   const { userId } = req.user;
@@ -51,9 +53,25 @@ const getRotasByEmployeeId = async (req, res) => {
   }
 };
 
+//toDo , there is no venue id , needs to find by userid
+const getArchivedRotasbyVenueId = async (req, res) => {
+  const { venueId } = req.body;
+  try {
+    const rotas = await Rota.find({ archived: true, venue: venueId });
+    if (!rotas) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ message: "No archoved Rotas not found" });
+    }
+    res.status(StatusCodes.OK).json({ rotas });
+  } catch (err) {
+    console.log(err);
+  }
+};
+
 const getRotaByVenueIdAndDate = async (req, res) => {
   const { venueId, weekStarting } = req.body;
-  console.log("VenueId:", venueId, "WeekStarting:", weekStarting);
+  //console.log("VenueId:", venueId, "WeekStarting:", weekStarting);
 
   try {
     const rota = await Rota.findOne({ venue: venueId, weekStarting });
@@ -63,11 +81,58 @@ const getRotaByVenueIdAndDate = async (req, res) => {
         .status(StatusCodes.NOT_FOUND)
         .json({ message: "Rota not found" });
     }
+    if (rota.archived === true) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ message: "Rota is archived" });
+    }
 
     res.status(StatusCodes.OK).json({ rota });
   } catch (error) {
     console.error("Error fetching rota:", error);
     res.status(StatusCodes.BAD_REQUEST).json({ message: "Invalid venue ID" });
+  }
+};
+
+const generateNewRota = async (req, res) => {
+  const { venueId, weekStarting } = req.body;
+  console.log("VenueId:", venueId, "WeekStarting:", weekStarting);
+
+  try {
+    const venue = await Venue.findById(venueId).populate("employees");
+
+    if (!venue) {
+      console.error(`No venue found for id: ${venueId}`);
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ message: "No venue found for that id" });
+    }
+
+    const weeks = generateWeeks(weekStarting, 1);
+    console.log("Generated weeks:", weeks);
+
+    const rotaData = createRota(venue.employees, weeks[0].days);
+    console.log("Generated rota data:", rotaData);
+
+    const newRota = await Rota.create({
+      name: `${venue.name} - Week starting ${weekStarting}`,
+      weekStarting: weekStarting,
+      rotaData: rotaData,
+      venue: venue._id,
+      employees: venue.employees.map((emp) => emp._id),
+    });
+    console.log("New rota created:", newRota);
+
+    venue.rota = [...venue.rota, newRota._id]; // Ensure you are pushing the new Rota ID
+    await venue.save();
+    console.log("Venue updated with new rota ID:", venue);
+
+    res.status(StatusCodes.OK).json({ newRota });
+  } catch (error) {
+    console.error("Error generating rota:", error);
+    res
+      .status(StatusCodes.BAD_REQUEST)
+      .json({ message: "Error generating rota" });
   }
 };
 
@@ -214,74 +279,12 @@ const publishRota = async (req, res) => {
   }
 };
 
-async function swapShifts(req, res) {
-  try {
-    const { fromShiftId, toShiftId, venueId } = req.body;
-    console.log(fromShiftId, toShiftId, venueId);
-
-    // Fetch the rota that contains the shifts
-    const rota = await Rota.findOne({
-      "rotaData.schedule._id": { $in: [fromShiftId, toShiftId] },
-      venue: venueId,
-    });
-
-    if (!rota) {
-      return res
-        .status(StatusCodes.NOT_FOUND)
-        .json({ message: "Rota not found" });
-    }
-
-    // Find the shifts in the rotaData
-    const fromEmployee = rota.rotaData.find((employee) =>
-      employee.schedule.some((shift) => shift._id.equals(fromShiftId))
-    );
-
-    const toEmployee = rota.rotaData.find((employee) =>
-      employee.schedule.some((shift) => shift._id.equals(toShiftId))
-    );
-
-    if (!fromEmployee || !toEmployee) {
-      return res
-        .status(StatusCodes.NOT_FOUND)
-        .json({ message: "Shifts not found" });
-    }
-
-    const fromShiftData = fromEmployee.schedule.id(fromShiftId);
-    const toShiftData = toEmployee.schedule.id(toShiftId);
-
-    const detailedMessage = `${fromEmployee.employeeName} wants to swap their shift on ${fromShiftData.date} (${fromShiftData.startTime} - ${fromShiftData.endTime}) with ${toEmployee.employeeName}'s shift on ${toShiftData.date} (${toShiftData.startTime} - ${toShiftData.endTime})`;
-
-    // Create a shift swap request with the detailed message
-    const shiftSwapRequest = new ShiftSwapRequest({
-      fromShiftId,
-      toShiftId,
-      fromEmployeeId: fromEmployee.employee,
-      toEmployeeId: toEmployee.employee,
-      rotaId: rota._id,
-      venueId: venueId,
-      message: detailedMessage,
-      status: "Pending",
-    });
-
-    await shiftSwapRequest.save();
-    console.log(shiftSwapRequest);
-
-    res
-      .status(StatusCodes.OK)
-      .json({ message: "Shift swap request created", shiftSwapRequest });
-  } catch (error) {
-    console.error(error);
-    res
-      .status(StatusCodes.INTERNAL_SERVER_ERROR)
-      .json({ message: "An error occurred", error });
-  }
-}
-
 module.exports = {
   getRotaById,
   updateRotaInfo,
   publishRota,
   getRotasByEmployeeId,
   getRotaByVenueIdAndDate,
-  swapShifts,
+  generateNewRota,
+  getArchivedRotasbyVenueId,
 };

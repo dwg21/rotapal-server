@@ -3,8 +3,16 @@ const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
 const defaultCommonShifts = [
-  { id: "day-off", desc: "Day Off", startTime: "", endTime: "" },
-  { id: "9-to-5", desc: "9 to 5", startTime: "09:00", endTime: "17:00" },
+  {
+    id: "day-off",
+    desc: "Day Off",
+    shiftData: { startTime: "", endTime: "", label: "Day Off" },
+  },
+  {
+    id: "9-to-5",
+    desc: "9 to 5",
+    shiftData: { startTime: "09:00", endTime: "17:00", label: "" },
+  },
 ];
 
 const venueSchema = new Schema({
@@ -27,8 +35,7 @@ const venueSchema = new Schema({
       {
         id: { type: String, required: true },
         desc: String,
-        startTime: String,
-        endTime: String,
+        shiftData: { startTime: String, endTime: String, label: String },
       },
     ],
     default: defaultCommonShifts,
