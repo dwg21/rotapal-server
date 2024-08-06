@@ -284,18 +284,28 @@ const getEmployeeRequests = async (req, res) => {
 
     const user = await User.findById(userId);
 
-    const requests = await ShiftSwapRequest.find({
+    // Find requests where the user is the toEmployeeId with status "EmployeePending"
+    const incomingRequests = await ShiftSwapRequest.find({
       toEmployeeId: user.employeeId,
       status: "EmployeePending",
     }).populate("fromEmployeeId toEmployeeId rotaId");
 
-    if (!requests) {
+    // Find requests where the user is the fromEmployeeId
+    const sentRequests = await ShiftSwapRequest.find({
+      fromEmployeeId: user.employeeId,
+    }).populate("fromEmployeeId toEmployeeId rotaId");
+
+    if (!incomingRequests && !sentRequests) {
       return res
         .status(StatusCodes.NOT_FOUND)
         .json({ message: "Shift swap requests not found" });
     }
 
-    res.status(StatusCodes.OK).json(requests);
+    // Return the results as separate objects
+    res.status(StatusCodes.OK).json({
+      incomingRequests,
+      sentRequests,
+    });
   } catch (error) {
     console.error(error);
     res

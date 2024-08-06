@@ -16,12 +16,11 @@ const updateExistingRotas = async ({ userId, holidayDate }) => {
   }); // Assuming week starts on Monday
   const formattedStartOfWeek = format(startOfWeekDate, "yyyy-MM-dd");
   console.log("startOfWeek", formattedStartOfWeek);
+
   const rotas = await Rota.find({
     weekStarting: formattedStartOfWeek,
     "rotaData.employee": employee._id,
   });
-
-  //console.log("", rotas);
 
   for (const rota of rotas) {
     rota.rotaData.forEach((rotaEntry) => {
@@ -30,10 +29,10 @@ const updateExistingRotas = async ({ userId, holidayDate }) => {
         rotaEntry.schedule.forEach((scheduleEntry) => {
           if (scheduleEntry.date === holidayDate) {
             console.log("bingo");
-            scheduleEntry.startTime = null;
-            scheduleEntry.endTime = null;
-            scheduleEntry.duration = 0;
-            scheduleEntry.label = "Holiday";
+            scheduleEntry.shiftData.startTime = null;
+            scheduleEntry.shiftData.endTime = null;
+            scheduleEntry.shiftData.duration = 0;
+            scheduleEntry.shiftData.label = "Holiday";
             scheduleEntry.holidayBooked = true;
           }
         });
@@ -49,6 +48,16 @@ const bookHoliday = async (req, res) => {
   console.log(date, userId);
 
   try {
+    const holidayDate = new Date(date);
+    const currentDate = new Date();
+
+    // Check if the holiday date is in the future
+    if (holidayDate <= currentDate) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        error: "Holiday date must be in the future",
+      });
+    }
+
     // Check if holiday already exists for this user and date
     const existingHoliday = await Holiday.findOne({ user: userId, date });
     if (existingHoliday) {

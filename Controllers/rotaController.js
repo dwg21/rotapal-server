@@ -235,8 +235,6 @@ const updateRotaInfo = async (req, res) => {
   }
 };
 
-module.exports = { updateRotaInfo };
-
 const publishRota = async (req, res) => {
   const { id: rotaId } = req.params;
   const { isPublished } = req.body;
