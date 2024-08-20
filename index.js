@@ -30,6 +30,7 @@ const rotaRouter = require("./routes/rotaRoutes");
 const notficationRouter = require("./routes/notficationRoutes");
 const swapRouter = require("./routes/swapRoutes");
 const holidayRouter = require("./routes/holidayRoutes");
+const employeeRouter = require("./routes/employeeRoutes.js");
 
 //middleware
 const notFoundMiddleware = require("./middleware/not-found");
@@ -43,6 +44,7 @@ app.use(cookieParser(process.env.JWT_SECRET));
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/venue", venueRouter);
+app.use("/api/v1/employee", employeeRouter);
 app.use("/api/v1/rotas", rotaRouter);
 app.use("/api/v1/notifcations", notficationRouter);
 app.use("/api/v1/swap", swapRouter);

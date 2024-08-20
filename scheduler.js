@@ -5,7 +5,6 @@ const { generateWeeks, createRota } = require("./utils/rotaUtils"); // Ensure th
 const { startOfWeek, isBefore, parseISO } = require("date-fns");
 // Function to check and create new rotas
 const checkAndCreateRotas = async () => {
-  console.log("ran");
   try {
     const venues = await Venue.find();
 
@@ -51,27 +50,100 @@ const checkAndCreateRotas = async () => {
   }
 };
 
-//Checks if rota is expired and set archived to true
+const calculateStatistics = (rota) => {
+  let totalStaffHours = 0;
+  let totalStaffCost = 0;
+  let totalHolidayDays = 0;
+  let totalHolidayCost = 0;
+
+  rota.rotaData.forEach((data) => {
+    const hourlyWage = data.hourlyWage;
+    data.schedule.forEach((shift) => {
+      const startTime = new Date(`1970-01-01T${shift.shiftData.startTime}Z`);
+      const endTime = new Date(`1970-01-01T${shift.shiftData.endTime}Z`);
+
+      // Ensure valid start and end times
+      if (!isNaN(startTime) && !isNaN(endTime) && startTime < endTime) {
+        const hoursWorked = (endTime - startTime) / (1000 * 60 * 60);
+        totalStaffHours += hoursWorked;
+        totalStaffCost += hoursWorked * hourlyWage;
+      }
+
+      if (shift.holidayBooked) {
+        totalHolidayDays += 1;
+        totalHolidayCost += 8 * hourlyWage; // 8 hours per holiday day
+      }
+    });
+  });
+
+  // Handle cases where calculations might result in NaN
+  totalStaffHours = isNaN(totalStaffHours) ? 0 : totalStaffHours;
+  totalStaffCost = isNaN(totalStaffCost) ? 0 : totalStaffCost;
+  totalHolidayDays = isNaN(totalHolidayDays) ? 0 : totalHolidayDays;
+  totalHolidayCost = isNaN(totalHolidayCost) ? 0 : totalHolidayCost;
+
+  return {
+    totalStaffHours,
+    totalStaffCost,
+    totalHolidayDays,
+    totalHolidayCost,
+  };
+};
+
+const updateVenueStatistics = async (rota) => {
+  const weekStarting = startOfWeek(new Date(rota.weekStarting), {
+    weekStartsOn: 1,
+  });
+
+  // Check if statistics for this week already exist in the venue
+  const venue = await Venue.findById(rota.venue);
+
+  // Check if statistics for this week already exist in the venue
+  const existingStat = venue.statistics.find(
+    (stat) => stat.weekStarting.getTime() === weekStarting.getTime()
+  );
+
+  // If statistics for this week are already present, don't add them again
+  if (existingStat) {
+    return;
+  }
+
+  const stats = calculateStatistics(rota);
+
+  await Venue.updateMany(
+    { rota: rota._id },
+    {
+      $push: {
+        statistics: {
+          weekStarting,
+          totalStaffHours: stats.totalStaffHours,
+          totalStaffCost: stats.totalStaffCost,
+          totalHolidayDays: stats.totalHolidayDays,
+          totalHolidayCost: stats.totalHolidayCost,
+        },
+      },
+    }
+  );
+};
+
 const checkRotasExpired = async () => {
   try {
-    console.log("ran here");
     const rotas = await Rota.find();
-    console.log(rotas);
 
-    const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 }); // Assuming week starts on Monday (1)
+    const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
 
-    rotas.forEach(async (rota) => {
-      let rotaWeekStart = parseISO(rota.weekStarting);
+    for (const rota of rotas) {
+      let rotaWeekStart = new Date(rota.weekStarting);
 
-      // Calculate if rota.weekStarting is more than a week older than currentWeekStart
-      //console.log(rotaWeekStart, currentWeekStart);
-      if (isBefore(rotaWeekStart, currentWeekStart)) {
-        console.log("here");
+      if (rotaWeekStart < currentWeekStart) {
         // Set rota.archived to true
         rota.archived = true;
         await rota.save();
+
+        // Update statistics for the venue
+        await updateVenueStatistics(rota);
       }
-    });
+    }
   } catch (err) {
     console.log(err);
   }

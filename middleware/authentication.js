@@ -32,42 +32,69 @@ const authenticateUser = async (req, res, next) => {
   }
 };
 
-// Checks user is the admin of the venue
-const authoriseVenueAdmin = async (req, res, next) => {
+const authoriseAccountOwner = async (req, res, next) => {
   if (!req.user) {
     console.error("req.user is undefined");
     const authError = new Error("Authentication invalid");
-    authError.statusCode = 401; // HTTP Status Code for Unauthorized
+    authError.statusCode = 401; // Unauthorized
     return next(authError);
   }
 
-  const { userId, role } = req.user;
-  const { id: rotaId } = req.params;
+  const { role } = req.user;
 
-  if (role !== "admin") {
-    const authError = new Error("Authentication invalid");
-    authError.statusCode = 401; // HTTP Status Code for Unauthorized
+  if (role !== "AccountOwner") {
+    const authError = new Error("Authorization invalid");
+    authError.statusCode = 403; // Forbidden
     return next(authError);
   }
 
   try {
-    const rota = await Rota.findById(rotaId);
-    if (!rota) {
-      const authError = new Error("Authentication invalid");
-      authError.statusCode = 401; // HTTP Status Code for Unauthorized
-      return next(authError);
+    // You might have additional checks here based on specific logic
+    next();
+  } catch (error) {
+    console.error("Error in authoriseAccountOwner middleware:", error);
+    next(error);
+  }
+};
+
+const authoriseVenueAdmin = async (req, res, next) => {
+  if (!req.user) {
+    console.error("req.user is undefined");
+    const authError = new Error("Authentication invalid");
+    authError.statusCode = 401; // Unauthorized
+    return next(authError);
+  }
+
+  const { userId } = req.user;
+  const { rotaId, venueId } = req.params;
+
+  try {
+    let venue;
+
+    if (rotaId) {
+      const rota = await Rota.findById(rotaId);
+      if (!rota) {
+        const authError = new Error("Rota not found");
+        authError.statusCode = 404; // Not Found
+        return next(authError);
+      }
+      venue = await Venue.findById(rota.venue);
+    } else if (venueId) {
+      venue = await Venue.findById(venueId);
     }
 
-    const venue = await Venue.findById(rota.venue);
     if (!venue) {
-      const authError = new Error("Authentication invalid");
-      authError.statusCode = 401; // HTTP Status Code for Unauthorized
+      const authError = new Error("Venue not found");
+      authError.statusCode = 404; // Not Found
       return next(authError);
     }
 
-    if (venue.createdBy.toString() !== userId) {
-      const authError = new Error("Authentication invalid");
-      authError.statusCode = 401; // HTTP Status Code for Unauthorized
+    const isAdmin =
+      venue.rotaAdmins.includes(userId) ||
+      venue.createdBy.toString() === userId;
+    if (!isAdmin) {
+      const authError = new Error("Not authorized to edit this venue");
+      authError.statusCode = 403; // Forbidden
       return next(authError);
     }
 
@@ -94,4 +121,5 @@ module.exports = {
   authenticateUser,
   authorisePermissions,
   authoriseVenueAdmin,
+  authoriseAccountOwner,
 };

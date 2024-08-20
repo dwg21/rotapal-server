@@ -1,11 +1,12 @@
 // controllers/venueController.js
 const { StatusCodes } = require("http-status-codes");
 const CustomError = require("../errors");
-
+const mongoose = require("mongoose");
 const User = require("../Models/User");
 const Employee = require("../Models/Employee");
 const Rota = require("../Models/Rota");
 const Venue = require("../Models/Venue");
+const { attachCookiesToResponse, createTokenUser } = require("../utils");
 
 const { createRota, generateWeeks } = require("../utils/rotaUtils");
 
@@ -130,33 +131,205 @@ const createVenue = async (req, res) => {
   }
 };
 
+const registerAndCreateVenue = async (req, res) => {
+  const { user, venue } = req.body; // Destructure user and venue from the request body
+
+  let newUser;
+  let tokenUser;
+
+  try {
+    // Register the user if the user data is provided
+    if (user) {
+      const { email, name, password } = user;
+
+      const emailAlreadyExists = await User.findOne({ email });
+      if (emailAlreadyExists) {
+        throw new CustomError.BadRequestError("Email already exists");
+      }
+
+      // Set the user's role to 'AccountOwner'
+      const role = "AccountOwner";
+
+      newUser = await User.create({ name, email, password, role });
+      tokenUser = createTokenUser(newUser);
+      attachCookiesToResponse({ res, user: tokenUser });
+    }
+
+    // Create the venue if the venue data is provided
+    if (venue) {
+      const { name, address, phone, openingHours, employees = [] } = venue;
+
+      // Check if a venue with the same name already exists
+      const venueAlreadyExists = await Venue.findOne({ name });
+      if (venueAlreadyExists) {
+        throw new CustomError.BadRequestError(
+          "Venue with this name already exists"
+        );
+      }
+
+      // Create the new venue
+      const newVenue = await Venue.create({
+        name,
+        address,
+        phone,
+        openingHours,
+        createdBy: tokenUser ? tokenUser.userId : req.user.userId, // Use newly registered user or the authenticated user
+      });
+
+      // Optionally create employees if provided
+      if (employees.length > 0) {
+        const employeePromises = employees.map(async (employee) => {
+          const { name, email, hourlyWage } = employee;
+          const existingUser = await User.findOne({ email });
+
+          let userId;
+          let newUser;
+
+          if (!existingUser) {
+            newUser = await User.create({
+              name,
+              email,
+              password: "secret",
+              role: "employee",
+            });
+            userId = newUser._id;
+          } else {
+            userId = existingUser._id;
+          }
+
+          const newEmployee = await Employee.create({
+            name,
+            userId,
+            email,
+            hourlyWage,
+            venue: newVenue._id, // Link to newly created venue
+          });
+
+          if (newUser) {
+            newUser.employeeId = newEmployee._id;
+            await newUser.save();
+          } else {
+            existingUser.employeeId = newEmployee._id;
+            await existingUser.save();
+          }
+
+          return newEmployee;
+        });
+
+        const createdEmployees = await Promise.all(employeePromises);
+
+        // Generate rotas for the venue based on employees
+        const weeks = generateWeeks();
+        const rotaPromises = weeks.map(async ({ startDate, days }) => {
+          const weekRotaData = createRota(createdEmployees, days);
+
+          const newRota = await Rota.create({
+            name: `${name} - Week starting ${startDate}`,
+            weekStarting: `${startDate}`,
+            rotaData: weekRotaData,
+            venue: newVenue._id,
+            employees: createdEmployees.map((emp) => emp._id), // Add employee IDs to the rota
+          });
+
+          return newRota._id;
+        });
+
+        const rotaIds = await Promise.all(rotaPromises);
+
+        // Update the venue with employee and rota IDs
+        newVenue.employees = createdEmployees.map((emp) => emp._id);
+        newVenue.rota = rotaIds;
+        await newVenue.save();
+
+        // Update each employee's rota field
+        for (const employee of createdEmployees) {
+          employee.rota = rotaIds;
+          await employee.save();
+        }
+      }
+
+      res
+        .status(StatusCodes.CREATED)
+        .json({ user: tokenUser, venue: newVenue });
+    } else if (newUser) {
+      res.status(StatusCodes.CREATED).json({ user: tokenUser });
+    } else {
+      throw new CustomError.BadRequestError(
+        "No data provided to create user or venue"
+      );
+    }
+  } catch (error) {
+    console.error(error);
+    if (error.message.includes("Employee with email")) {
+      res.status(StatusCodes.BAD_REQUEST).json({ error: error.message });
+    } else {
+      res
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .json({ error: error.message });
+    }
+  }
+};
+
 // Get all venues for that spefic user
 const getAllVenues = async (req, res) => {
   const venues = await Venue.find({ createdBy: req.user.userId });
   res.status(StatusCodes.OK).json({ venues });
 };
 
-// Get a single venue by ID
 const getVenueById = async (req, res) => {
-  const venue = await Venue.findById(req.params.id).populate("user");
-  if (!venue) {
-    throw new CustomError.NotFoundError("Venue not found");
+  const { id } = req.params;
+  console.log("venueibebd", id);
+  console.log(req.params);
+
+  try {
+    const venue = await Venue.findById(id);
+    if (!venue) {
+      return res.status(404).json({ error: "Venue not found" });
+    }
+    res.status(200).json({ venue });
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching venue details" });
   }
-  res.status(StatusCodes.OK).json({ venue });
 };
 
 // Update a venue by ID
-const updateVenue = async (req, res) => {
-  const { name, address, phone, openingHours } = req.body;
-  const venue = await Venue.findByIdAndUpdate(
-    req.params.id,
-    { name, address, phone, openingHours },
-    { new: true, runValidators: true }
-  );
-  if (!venue) {
-    throw new CustomError.NotFoundError("Venue not found");
+const updateVenue = async (req, res, next) => {
+  try {
+    const { name, address, phone, openingHours } = req.body;
+    const venueId = req.params.id;
+
+    // Validate the venue ID
+    if (!venueId) {
+      throw new CustomError.BadRequestError("Venue ID is required");
+    }
+
+    // Validate required fields
+    if (!name || !address || !phone || !openingHours) {
+      throw new CustomError.BadRequestError(
+        "All fields (name, address, phone, opening hours) are required"
+      );
+    }
+
+    // Update the venue details
+    const venue = await Venue.findByIdAndUpdate(
+      venueId,
+      { name, address, phone, openingHours },
+      { new: true, runValidators: true }
+    );
+
+    // Check if the venue exists
+    if (!venue) {
+      throw new CustomError.NotFoundError("Venue not found");
+    }
+
+    res.status(StatusCodes.OK).json({ venue });
+  } catch (error) {
+    next(error);
   }
-  res.status(StatusCodes.OK).json({ venue });
+};
+
+module.exports = {
+  updateVenue,
 };
 
 // Delete a venue by ID
@@ -265,6 +438,34 @@ const getCommonShifts = async (req, res) => {
     res
       .status(StatusCodes.INTERNAL_SERVER_ERROR)
       .json({ error: "Failed to fetch common shifts" });
+  }
+};
+
+// Fetch employees for a venue
+// Fetch employees for a venue
+const getVenueEmployees = async (req, res) => {
+  const { venueId } = req.params;
+  console.log("jeheh", venueId);
+
+  try {
+    if (!venueId) {
+      res
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .json({ error: "No venue id supplied" });
+    }
+    console.log(venueId);
+
+    const employees = await Venue.findById(venueId).populate("employees");
+    if (!employees) {
+      throw new CustomError.NotFoundError("Venue or employes not found");
+    }
+
+    res.status(StatusCodes.OK).json({ employees });
+  } catch (error) {
+    console.error("Error fetching employees:", error.message);
+    res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ error: "Failed to fetch employees" });
   }
 };
 
@@ -383,6 +584,7 @@ const removeCommonRota = async (req, res) => {
 
 module.exports = {
   createVenue,
+  registerAndCreateVenue,
   getAllVenues,
   getVenueById,
   updateVenue,
@@ -398,4 +600,5 @@ module.exports = {
   getCommonRotas,
   addCommonRota,
   removeCommonRota,
+  getVenueEmployees,
 };

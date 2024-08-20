@@ -30,6 +30,15 @@ const venueSchema = new Schema({
   },
   employees: [{ type: mongoose.Schema.Types.ObjectId, ref: "Employee" }],
   rota: [{ type: mongoose.Schema.Types.ObjectId, ref: "Rota" }],
+  statistics: [
+    {
+      weekStarting: Date, // First date of the week
+      totalStaffHours: Number,
+      totalStaffCost: Number,
+      totalHolidayDays: Number,
+      totalHolidayCost: Number,
+    },
+  ],
   commonShifts: {
     type: [
       {
@@ -46,6 +55,7 @@ const venueSchema = new Schema({
     ref: "User",
     required: true,
   },
+  rotaAdmins: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // New field
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

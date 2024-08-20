@@ -8,6 +8,7 @@ const employeeSchema = new Schema({
   email: { type: String, required: true },
   venue: { type: mongoose.Schema.Types.ObjectId, ref: "Venue" },
   rota: [{ type: mongoose.Schema.Types.ObjectId, ref: "Rota" }],
+  accountActive: { type: Boolean, default: false },
 });
 
 module.exports = mongoose.model("Employee", employeeSchema);

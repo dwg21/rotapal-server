@@ -6,11 +6,10 @@ const Employee = require("../Models/Employee");
 const { StatusCodes } = require("http-status-codes");
 const CustomError = require("../errors");
 const { generateWeeks, createRota } = require("../utils/rotaUtils");
-const { trusted } = require("mongoose");
 
 const getRotasByEmployeeId = async (req, res) => {
   const { userId } = req.user;
-  const { weekStarting } = req.body;
+  const { weekStarting } = req.params;
   console.log("userId:", userId, "weekStarting:", weekStarting);
 
   try {
@@ -55,7 +54,7 @@ const getRotasByEmployeeId = async (req, res) => {
 
 //toDo , there is no venue id , needs to find by userid
 const getArchivedRotasbyVenueId = async (req, res) => {
-  const { venueId } = req.body;
+  const { venueId } = req.params;
   try {
     const rotas = await Rota.find({ archived: true, venue: venueId });
     if (!rotas) {
@@ -70,8 +69,9 @@ const getArchivedRotasbyVenueId = async (req, res) => {
 };
 
 const getRotaByVenueIdAndDate = async (req, res) => {
-  const { venueId, weekStarting } = req.body;
-  //console.log("VenueId:", venueId, "WeekStarting:", weekStarting);
+  console.log("hhe");
+  const { venueId, weekStarting } = req.params;
+  // console.log("VenueId:", venueId, "WeekStarting:", weekStarting);
 
   try {
     const rota = await Rota.findOne({ venue: venueId, weekStarting });
@@ -95,7 +95,7 @@ const getRotaByVenueIdAndDate = async (req, res) => {
 };
 
 const generateNewRota = async (req, res) => {
-  const { venueId, weekStarting } = req.body;
+  const { venueId, weekStarting } = req.params;
   console.log("VenueId:", venueId, "WeekStarting:", weekStarting);
 
   try {
@@ -192,12 +192,13 @@ const getRotaById = async (req, res) => {
 // };
 
 const updateRotaInfo = async (req, res) => {
-  const { id: rotaId } = req.params;
+  const { rotaId } = req.params;
   const { newRota } = req.body;
+
+  console.log("hello");
 
   try {
     const rota = await Rota.findById(rotaId);
-    console.log("hhdh", rota);
 
     if (!rota) {
       return res
@@ -211,8 +212,6 @@ const updateRotaInfo = async (req, res) => {
         (newRotaEntry) =>
           String(newRotaEntry.employee) === String(employeeRota.employee)
       );
-
-      console.log(newEmployeeRota);
 
       if (newEmployeeRota) {
         employeeRota.schedule.forEach((scheduleEntry, scheduleIndex) => {
@@ -236,7 +235,7 @@ const updateRotaInfo = async (req, res) => {
 };
 
 const publishRota = async (req, res) => {
-  const { id: rotaId } = req.params;
+  const { rotaId } = req.params;
   const { isPublished } = req.body;
 
   try {

@@ -15,15 +15,41 @@ const {
   authenticateUser,
 } = require("../middleware/authentication");
 
-router.post("/archivedRoas", authenticateUser, getArchivedRotasbyVenueId);
-router.post("/rota", authenticateUser, getRotaByVenueIdAndDate);
+router.get(
+  "/archivedRoas/:venueId",
+  authenticateUser,
+  authoriseVenueAdmin,
+  getArchivedRotasbyVenueId
+);
 
-router.post("/rota/generateRota", authenticateUser, generateNewRota);
+router.get(
+  "/rota/employee/:weekStarting",
+  authenticateUser,
+  getRotasByEmployeeId
+);
 
-router.post("/rota/employee", authenticateUser, getRotasByEmployeeId);
+router.get(
+  "/rota/:venueId/:weekStarting",
+  authenticateUser,
+  authoriseVenueAdmin,
+  getRotaByVenueIdAndDate
+);
 
-router.get("/:id", authenticateUser, getRotaById);
-router.post("/:id", authenticateUser, updateRotaInfo);
-router.post("/:id/publish", authenticateUser, publishRota);
+router.put(
+  "/rota/generateRota/:venueId/:weekStarting",
+  authenticateUser,
+  authoriseVenueAdmin,
+  generateNewRota
+);
+
+//router.get("/:id", authenticateUser, getRotaById);
+router.post("/:rotaId", authenticateUser, authoriseVenueAdmin, updateRotaInfo);
+
+router.post(
+  "/:rotaId/publish",
+  authenticateUser,
+  authoriseVenueAdmin,
+  publishRota
+);
 
 module.exports = router;

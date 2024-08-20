@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const {
   createVenue,
+  registerAndCreateVenue,
   getAllVenues,
   getVenueById,
   updateVenue,
@@ -18,6 +19,7 @@ const {
   getCommonRotas,
   addCommonRota,
   removeCommonRota,
+  getVenueEmployees,
 } = require("../Controllers/venueController");
 
 const {
@@ -28,6 +30,8 @@ const {
 //Todo , make authenticateVenueAdmin work
 
 router.post("/venues", authenticateUser, createVenue);
+router.post("/registerAndCreateVenue", registerAndCreateVenue);
+
 router.get("/venues", authenticateUser, getAllVenues);
 router.get("/venues/:id", authenticateUser, getVenueById);
 router.put("/venues/:id", authenticateUser, updateVenue);
@@ -43,6 +47,7 @@ router.delete(
 router.route("/venues/:id/rota").patch(authenticateUser, updateRota); // New route for updating rota
 
 router.get("/:venueId/common-shifts", authenticateUser, getCommonShifts);
+router.get("/:venueId/employees", authenticateUser, getVenueEmployees);
 
 router.post("/:venueId/common-shifts", authenticateUser, addCommonShift);
 
