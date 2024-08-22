@@ -7,12 +7,12 @@ const shiftSwapRequestSchema = new Schema({
   toShiftId: { type: mongoose.Schema.Types.ObjectId, required: true },
   fromEmployeeId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Employee",
+    ref: "User",
     required: true,
   },
   toEmployeeId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Employee",
+    ref: "User",
     required: true,
   },
   rotaId: { type: mongoose.Schema.Types.ObjectId, ref: "Rota", required: true },

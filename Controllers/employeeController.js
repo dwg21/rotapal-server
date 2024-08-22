@@ -1,60 +1,99 @@
-const Employee = require("../Models/Employee");
+const User = require("../Models/User");
+const Venue = require("../Models/Venue");
 const { StatusCodes } = require("http-status-codes");
 const customError = require("../errors/");
 
 const getAllEmployees = async (req, res) => {
-  const employees = await Employee.find({ venue: req.params.venueId });
-  res.status(StatusCodes.OK).json({ employees });
-};
+  const { venueId } = req.params;
 
-const getSingleEmployee = async (req, res) => {
-  const employee = await Employee.findById(req.params.id);
-  if (!employee) {
-    throw new customError.NotFoundError(
-      `No employee found with ID ${req.params.id}`
-    );
+  try {
+    const venue = await Venue.findById(venueId).populate("employees");
+
+    if (!venue) {
+      throw new customError.NotFoundError("Venue not found");
+    }
+
+    const employees = venue.employees;
+
+    res.status(StatusCodes.OK).json({ employees });
+  } catch (error) {
+    console.error("Error fetching employees:", error);
+    res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ error: error.message });
   }
-  res.status(StatusCodes.OK).json({ employee });
 };
 
 const updateEmployee = async (req, res) => {
-  const { name, email, hourlyWage } = req.body;
-  if (!name || !email || hourlyWage === undefined) {
+  const { userId } = req.user;
+  const { name, hourlyWage } = req.body;
+  console.log(name, hourlyWage);
+
+  if (!name || hourlyWage === undefined) {
     throw new customError.BadRequestError(
       "Please provide name, email, and hourly wage"
     );
   }
 
-  const employee = await Employee.findById(req.params.id);
-  if (!employee) {
-    throw new customError.NotFoundError(
-      `No employee found with ID ${req.params.id}`
-    );
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new customError.NotFoundError("User not found");
+    }
+
+    if (user.name !== name) {
+      user.name = name;
+    }
+
+    if (user.hourlyWage !== hourlyWage) {
+      user.hourlyWage = hourlyWage;
+    }
+
+    await user.save();
+
+    res.status(StatusCodes.OK).json({ employee: user });
+  } catch (error) {
+    console.error("Error updating employee:", error);
+    res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ error: error.message });
   }
-
-  employee.name = name;
-  employee.email = email;
-  employee.hourlyWage = hourlyWage;
-
-  await employee.save();
-
-  res.status(StatusCodes.OK).json({ employee });
 };
 
 const deleteEmployee = async (req, res) => {
-  const employee = await Employee.findByIdAndDelete(req.params.id);
-  if (!employee) {
-    throw new customError.NotFoundError(
-      `No employee found with ID ${req.params.id}`
-    );
-  }
+  const { venueId } = req.params;
+  const { userId } = req.user;
 
-  res.status(StatusCodes.OK).json({ msg: "Employee deleted" });
+  try {
+    const venue = await Venue.findById(venueId);
+
+    if (!venue) {
+      throw new customError.NotFoundError("Venue not found");
+    }
+
+    const employees = venue.employees.filter(
+      (employee) => employee.toString() !== userId
+    );
+
+    if (employees.length === venue.employees.length) {
+      throw new customError.NotFoundError("Employee not found in venue");
+    }
+
+    venue.employees = employees;
+    await venue.save();
+
+    res.status(StatusCodes.OK).json({ msg: "Employee removed from venue" });
+  } catch (error) {
+    console.error("Error deleting employee:", error);
+    res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ error: error.message });
+  }
 };
 
 module.exports = {
   getAllEmployees,
-  getSingleEmployee,
   updateEmployee,
   deleteEmployee,
 };

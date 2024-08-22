@@ -41,9 +41,12 @@ const authoriseAccountOwner = async (req, res, next) => {
   }
 
   const { role } = req.user;
+  console.log(role);
 
   if (role !== "AccountOwner") {
-    const authError = new Error("Authorization invalid");
+    const authError = new Error(
+      "Authorization invalid, user is not the account ownwe"
+    );
     authError.statusCode = 403; // Forbidden
     return next(authError);
   }
@@ -60,7 +63,9 @@ const authoriseAccountOwner = async (req, res, next) => {
 const authoriseVenueAdmin = async (req, res, next) => {
   if (!req.user) {
     console.error("req.user is undefined");
-    const authError = new Error("Authentication invalid");
+    const authError = new Error(
+      "Authentication invalid, no user detials present"
+    );
     authError.statusCode = 401; // Unauthorized
     return next(authError);
   }

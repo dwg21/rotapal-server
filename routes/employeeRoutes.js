@@ -4,11 +4,11 @@ const router = express.Router();
 const {
   authenticateUser,
   authoriseVenueAdmin,
+  authoriseAccountOwner,
 } = require("../middleware/authentication");
 
 const {
   getAllEmployees,
-  getSingleEmployee,
   updateEmployee,
   deleteEmployee,
 } = require("../Controllers/employeeController");
@@ -21,13 +21,10 @@ router.get(
   getAllEmployees
 );
 
-// Route to get a single employee by ID
-router.get("/:id", authenticateUser, getSingleEmployee);
-
 // Route to update a specific employee by ID
-router.put("/:id", authenticateUser, updateEmployee);
+router.put("/:id", authenticateUser, authoriseAccountOwner, updateEmployee);
 
 // Route to delete a specific employee by ID
-router.delete("/:id", authenticateUser, deleteEmployee);
+router.delete("/:id", authenticateUser, authoriseAccountOwner, deleteEmployee);
 
 module.exports = router;

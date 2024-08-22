@@ -1,8 +1,8 @@
 const Rota = require("../Models/Rota");
 const Venue = require("../Models/Venue");
+const User = require("../Models/User");
 const ShiftSwapRequest = require("../Models/ShiftSwapRequest");
 const Notification = require("../Models/Notification");
-const Employee = require("../Models/Employee");
 const { StatusCodes } = require("http-status-codes");
 const CustomError = require("../errors");
 const { generateWeeks, createRota } = require("../utils/rotaUtils");
@@ -13,19 +13,17 @@ const getRotasByEmployeeId = async (req, res) => {
   console.log("userId:", userId, "weekStarting:", weekStarting);
 
   try {
-    // Find the employee by user ID and populate the venue and rota fields
-    const employee = await Employee.findOne({ userId })
-      .populate("venue")
-      .populate("rota");
+    // Find the user by ID and populate the venue and rota fields
+    const user = await User.findById(userId).populate("venue").populate("rota");
 
-    if (!employee) {
+    if (!user) {
       return res
         .status(StatusCodes.NOT_FOUND)
-        .json({ message: "No employee found for this user" });
+        .json({ message: "No user found for this ID" });
     }
 
     const rota = await Rota.findOne({
-      venue: employee.venue._id,
+      venue: user.venue._id,
       weekStarting,
     });
 
@@ -48,7 +46,7 @@ const getRotasByEmployeeId = async (req, res) => {
     console.error("Error fetching rotas:", error);
     res
       .status(StatusCodes.INTERNAL_SERVER_ERROR)
-      .json({ message: "Server error" });
+      .json({ message: "Server error " });
   }
 };
 

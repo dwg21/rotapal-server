@@ -1,5 +1,5 @@
 const Notification = require("../Models/Notification");
-const Employee = require("../Models/Employee");
+const User = require("../Models/User");
 const { StatusCodes } = require("http-status-codes");
 
 // Create a new notification
@@ -38,25 +38,24 @@ const getEmployeeNotificationsByUserId = async (req, res) => {
   const { userId } = req.user;
 
   try {
-    // Find the employee by user ID
-    const employee = await Employee.findOne({ userId });
-    if (!employee) {
-      return res.status(StatusCodes.NOT_FOUND).json({
-        error: "Employee not found for the given user ID",
-      });
-    }
+    // Find the user by user ID
+    // const user = await User.findById(userId);
+    // if (!user) {
+    //   return res.status(StatusCodes.NOT_FOUND).json({
+    //     error: "User not found for the given user ID",
+    //   });
+    // }
 
-    // Find all notifications for the employee
+    // Find all notifications for the user
     const notifications = await Notification.find({
-      recipientId: employee._id,
+      recipientId: userId,
     });
 
     res.status(StatusCodes.OK).json({
-      employeeId: employee._id,
       notifications,
     });
   } catch (error) {
-    console.error("Error fetching employee notifications:", error);
+    console.error("Error fetching user notifications:", error);
     res
       .status(StatusCodes.INTERNAL_SERVER_ERROR)
       .json({ error: "Server error" });

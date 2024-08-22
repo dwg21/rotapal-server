@@ -3,7 +3,6 @@ const { StatusCodes } = require("http-status-codes");
 const CustomError = require("../errors");
 const mongoose = require("mongoose");
 const User = require("../Models/User");
-const Employee = require("../Models/Employee");
 const Rota = require("../Models/Rota");
 const Venue = require("../Models/Venue");
 const { attachCookiesToResponse, createTokenUser } = require("../utils");
@@ -25,7 +24,9 @@ const createVenue = async (req, res) => {
     // Validate employees array
     if (
       !Array.isArray(employees) ||
-      employees.some((emp) => !emp.name || !emp.email || !emp.hourlyWage)
+      employees.some(
+        (emp) => !emp.name || !emp.email || emp.hourlyWage === undefined
+      )
     ) {
       return res.status(StatusCodes.BAD_REQUEST).json({
         error: "Each employee must have a name, email, and hourlyWage.",
@@ -46,47 +47,29 @@ const createVenue = async (req, res) => {
       const { name, email, hourlyWage } = employee;
       const existingUser = await User.findOne({ email });
 
-      let userId;
-      let newUser;
-      if (!existingUser) {
-        newUser = await User.create({
-          name,
-          email,
-          password: "secret",
-          role: "employee",
-        });
-        userId = newUser._id;
-      } else {
-        userId = existingUser._id;
+      if (existingUser) {
+        // Update existing user if found
+        existingUser.hourlyWage = hourlyWage;
+        existingUser.venue = newVenue._id; // Link to newly created venue
+        return existingUser.save(); // Save and return updated user
       }
 
-      // Check for existing employee
-      const existingEmployee = await Employee.findOne({ email });
-      if (existingEmployee) {
-        throw new Error(`Employee with email ${email} already exists.`);
-      }
-
-      const newEmployee = await Employee.create({
+      // Create new user if not found
+      const newUser = await User.create({
         name,
-        userId,
         email,
-        hourlyWage,
+        password: "secret", // Ensure to hash the password in a real application
+        role: "employee",
+        hourlyWage, // Add hourly wage to the user object
         venue: newVenue._id, // Link to newly created venue
       });
 
-      // Update the user document with the employee ID
-      if (newUser) {
-        newUser.employeeId = newEmployee._id;
-        await newUser.save();
-      } else {
-        existingUser.employeeId = newEmployee._id;
-        await existingUser.save();
-      }
-
-      return newEmployee; // Return the newly created employee document
+      return newUser; // Return newly created user
     });
 
     const createdEmployees = await Promise.all(employeePromises);
+
+    console.log("hshhshs", createdEmployees);
 
     // Generate the weeks and corresponding rotas
     const weeks = generateWeeks();
@@ -106,12 +89,15 @@ const createVenue = async (req, res) => {
     });
 
     const rotaIds = await Promise.all(rotaPromises);
+    console.log("rotaIds", rotaIds);
 
     // Update each employee's rota field
-    for (const employee of createdEmployees) {
-      employee.rota = rotaIds;
-      await employee.save();
-    }
+    await Promise.all(
+      createdEmployees.map(async (employee) => {
+        employee.rota = rotaIds;
+        return employee.save();
+      })
+    );
 
     // Update the venue document with employee IDs and rota IDs
     newVenue.employees = createdEmployees.map((emp) => emp._id);
@@ -120,7 +106,7 @@ const createVenue = async (req, res) => {
 
     res.status(StatusCodes.CREATED).json({ venue: newVenue }); // Respond with the newly created venue
   } catch (error) {
-    console.error(error);
+    console.error("Error creating venue:", error);
     if (error.message.includes("Employee with email")) {
       res.status(StatusCodes.BAD_REQUEST).json({ error: error.message });
     } else {
@@ -180,40 +166,24 @@ const registerAndCreateVenue = async (req, res) => {
       if (employees.length > 0) {
         const employeePromises = employees.map(async (employee) => {
           const { name, email, hourlyWage } = employee;
-          const existingUser = await User.findOne({ email });
+          let existingUser = await User.findOne({ email });
 
-          let userId;
-          let newUser;
-
+          // Create a new user if not existing
           if (!existingUser) {
-            newUser = await User.create({
+            existingUser = await User.create({
               name,
               email,
-              password: "secret",
+              password: "secret", // Ensure to hash passwords in real applications
               role: "employee",
             });
-            userId = newUser._id;
-          } else {
-            userId = existingUser._id;
           }
 
-          const newEmployee = await Employee.create({
-            name,
-            userId,
-            email,
-            hourlyWage,
-            venue: newVenue._id, // Link to newly created venue
-          });
+          // Link user as employee in venue
+          existingUser.hourlyWage = hourlyWage;
+          existingUser.venue = newVenue._id; // Link to newly created venue
+          await existingUser.save();
 
-          if (newUser) {
-            newUser.employeeId = newEmployee._id;
-            await newUser.save();
-          } else {
-            existingUser.employeeId = newEmployee._id;
-            await existingUser.save();
-          }
-
-          return newEmployee;
+          return existingUser;
         });
 
         const createdEmployees = await Promise.all(employeePromises);
@@ -242,10 +212,12 @@ const registerAndCreateVenue = async (req, res) => {
         await newVenue.save();
 
         // Update each employee's rota field
-        for (const employee of createdEmployees) {
-          employee.rota = rotaIds;
-          await employee.save();
-        }
+        await Promise.all(
+          createdEmployees.map(async (employee) => {
+            employee.rota = rotaIds;
+            return employee.save();
+          })
+        );
       }
 
       res
@@ -259,8 +231,8 @@ const registerAndCreateVenue = async (req, res) => {
       );
     }
   } catch (error) {
-    console.error(error);
-    if (error.message.includes("Employee with email")) {
+    console.error("Error registering user and creating venue:", error);
+    if (error.message.includes("Email already exists")) {
       res.status(StatusCodes.BAD_REQUEST).json({ error: error.message });
     } else {
       res

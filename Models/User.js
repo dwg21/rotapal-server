@@ -1,12 +1,11 @@
 const mongoose = require("mongoose");
 const validator = require("validator");
-
-const bycrypt = require("bcryptjs");
+const bcrypt = require("bcryptjs");
 
 const UserSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: [true, "Please provide name "],
+    required: [true, "Please provide name"],
     minlength: 3,
     maxlength: 50,
   },
@@ -14,18 +13,16 @@ const UserSchema = new mongoose.Schema({
   email: {
     type: String,
     unique: true,
-    required: [true, "Please provide email "],
+    required: [true, "Please provide email"],
     validate: {
       validator: validator.isEmail,
-      message: "Please provide valid email",
+      message: "Please provide a valid email",
     },
   },
 
-  employeeId: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" },
-
   password: {
     type: String,
-    required: [true, "Please provide password "],
+    required: [true, "Please provide password"],
     minlength: 6,
   },
 
@@ -34,18 +31,41 @@ const UserSchema = new mongoose.Schema({
     enum: ["AccountOwner", "admin", "employee"],
     default: "AccountOwner",
   },
+
+  hourlyWage: {
+    type: Number,
+    required: false,
+  },
+
+  venue: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Venue",
+    required: false,
+  },
+
+  rota: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Rota",
+    },
+  ],
+
+  accountActive: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-//to access variables in schema use .this
-// only rehashes password when password is being changed
+// Hash password before saving if it's modified
 UserSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
-  const salt = await bycrypt.genSalt(10);
-  this.password = await bycrypt.hash(this.password, salt);
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
+// Compare password method
 UserSchema.methods.comparePassword = async function (candidatePassword) {
-  const isMatch = await bycrypt.compare(candidatePassword, this.password);
+  const isMatch = await bcrypt.compare(candidatePassword, this.password);
   return isMatch;
 };
 

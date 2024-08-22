@@ -6,8 +6,16 @@ const {
   authenticateUser,
 } = require("../middleware/authentication");
 
-const { bookHoliday } = require("../Controllers/holidayControllers");
+// For user requesting holiday
+const {
+  createHolidayRequest,
+  approveHoliday,
+  getUserPendingHolidays,
+  getVenueHolidays,
+} = require("../Controllers/holidayControllers");
 
-router.post("/book-holiday", authenticateUser, bookHoliday);
+router.post("/book-holiday", authenticateUser, createHolidayRequest);
+router.put("/approveHoliday/:holidayId", authenticateUser, approveHoliday);
+router.get("/getVenueHolidays/:venueId", authenticateUser, getVenueHolidays);
 
 module.exports = router;

@@ -28,7 +28,7 @@ const venueSchema = new Schema({
     saturday: { open: String, close: String },
     sunday: { open: String, close: String },
   },
-  employees: [{ type: mongoose.Schema.Types.ObjectId, ref: "Employee" }],
+  employees: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   rota: [{ type: mongoose.Schema.Types.ObjectId, ref: "Rota" }],
   statistics: [
     {

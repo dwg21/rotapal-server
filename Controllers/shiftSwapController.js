@@ -280,19 +280,18 @@ async function declineShiftSwap(req, res) {
 const getEmployeeRequests = async (req, res) => {
   try {
     const { userId } = req.user;
-    console.log(userId);
 
     const user = await User.findById(userId);
 
     // Find requests where the user is the toEmployeeId with status "EmployeePending"
     const incomingRequests = await ShiftSwapRequest.find({
-      toEmployeeId: user.employeeId,
+      toEmployeeId: user._id,
       status: "EmployeePending",
     }).populate("fromEmployeeId toEmployeeId rotaId");
 
     // Find requests where the user is the fromEmployeeId
     const sentRequests = await ShiftSwapRequest.find({
-      fromEmployeeId: user.employeeId,
+      fromEmployeeId: user._id,
     }).populate("fromEmployeeId toEmployeeId rotaId");
 
     if (!incomingRequests && !sentRequests) {
