@@ -3,8 +3,8 @@ const { Schema } = mongoose;
 
 const NotificationSchema = new Schema({
   created: {
-    type: Number,
-    default: () => new Date().getTime(),
+    type: Date,
+    default: Date.now,
   },
   message: {
     type: String,

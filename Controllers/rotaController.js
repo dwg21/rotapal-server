@@ -67,28 +67,40 @@ const getArchivedRotasbyVenueId = async (req, res) => {
 };
 
 const getRotaByVenueIdAndDate = async (req, res) => {
-  console.log("hhe");
   const { venueId, weekStarting } = req.params;
-  // console.log("VenueId:", venueId, "WeekStarting:", weekStarting);
 
   try {
     const rota = await Rota.findOne({ venue: venueId, weekStarting });
 
     if (!rota) {
-      return res
-        .status(StatusCodes.NOT_FOUND)
-        .json({ message: "Rota not found" });
-    }
-    if (rota.archived === true) {
-      return res
-        .status(StatusCodes.NOT_FOUND)
-        .json({ message: "Rota is archived" });
+      const currentDate = new Date();
+      const rotaDate = new Date(weekStarting);
+
+      let message = "Rota not found";
+      if (rotaDate < currentDate) {
+        message = "Rota not found for a past date";
+      } else {
+        message = "Rota not found for a future date";
+      }
+
+      return res.status(StatusCodes.OK).json({
+        success: false,
+        message,
+        pastDate: rotaDate < currentDate,
+        futureDate: rotaDate >= currentDate,
+      });
     }
 
-    res.status(StatusCodes.OK).json({ rota });
+    res.status(StatusCodes.OK).json({
+      success: true,
+      rota,
+    });
   } catch (error) {
     console.error("Error fetching rota:", error);
-    res.status(StatusCodes.BAD_REQUEST).json({ message: "Invalid venue ID" });
+    res.status(StatusCodes.BAD_REQUEST).json({
+      success: false,
+      message: "Invalid venue ID",
+    });
   }
 };
 

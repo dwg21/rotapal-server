@@ -36,20 +36,19 @@ const createNotification = async (req, res) => {
 
 const getEmployeeNotificationsByUserId = async (req, res) => {
   const { userId } = req.user;
+  const { includeRead } = req.query; // Get the includeRead parameter from the query string
 
   try {
-    // Find the user by user ID
-    // const user = await User.findById(userId);
-    // if (!user) {
-    //   return res.status(StatusCodes.NOT_FOUND).json({
-    //     error: "User not found for the given user ID",
-    //   });
-    // }
+    // Build the query based on includeRead parameter
+    const query = { recipientId: userId };
 
-    // Find all notifications for the user
-    const notifications = await Notification.find({
-      recipientId: userId,
-    });
+    if (!includeRead || includeRead === "false") {
+      // If includeRead is false or not provided, filter out read notifications
+      query.isRead = false;
+    }
+
+    // Find all notifications for the user based on the query
+    const notifications = await Notification.find(query);
 
     res.status(StatusCodes.OK).json({
       notifications,
@@ -62,7 +61,37 @@ const getEmployeeNotificationsByUserId = async (req, res) => {
   }
 };
 
+const markNotificationAsRead = async (req, res) => {
+  const { notificationId } = req.params;
+
+  try {
+    // Find the notification by ID and update its isRead status to true
+    const notification = await Notification.findByIdAndUpdate(
+      notificationId,
+      { isRead: true },
+      { new: true } // Return the updated document
+    );
+
+    if (!notification) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ error: "Notification not found" });
+    }
+
+    res.status(StatusCodes.OK).json({
+      message: "Notification marked as read",
+      notification,
+    });
+  } catch (error) {
+    console.error("Error marking notification as read:", error);
+    res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ error: "Server error" });
+  }
+};
+
 module.exports = {
   createNotification,
   getEmployeeNotificationsByUserId,
+  markNotificationAsRead,
 };

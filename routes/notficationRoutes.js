@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   createNotification,
   getEmployeeNotificationsByUserId,
+  markNotificationAsRead,
 } = require("../Controllers/notificationController");
 
 const {
@@ -22,5 +23,7 @@ router.post(
   authoriseVenueAdmin,
   createNotification
 );
+
+router.put("/read/:notificationId", authenticateUser, markNotificationAsRead);
 
 module.exports = router;
