@@ -3,6 +3,7 @@ const Rota = require("../Models/Rota");
 const { StatusCodes } = require("http-status-codes");
 const Notification = require("../Models/Notification");
 const User = require("../Models/User");
+const Business = require("../Models/Business");
 
 const sendShiftSwapRequest = async (req, res) => {
   try {
@@ -61,6 +62,7 @@ const sendShiftSwapRequest = async (req, res) => {
       rotaId: rota._id,
       venueId: venueId,
       message: detailedMessage,
+      businessId: req.user.business,
     });
 
     await shiftSwapRequest.save();
@@ -77,16 +79,40 @@ const sendShiftSwapRequest = async (req, res) => {
   }
 };
 
-//Returns any request that have been approed by employee
+//Plan
+// Account owner can see all of the requests
+// Rota Admins see requests relvnat to their rota
+// check user , if admin respond with relevant
+//ToDo add admin part
+
+//Returns any request that have been approved by employee
 const getPendingRequests = async (req, res) => {
+  const { userId, business } = req.user;
+
+  const { venueId } = req.query;
+
   try {
-    const { venueId } = req.query;
-    console.log(venueId);
+    const user = await User.findById(userId);
+
+    // Check if user exists
+    if (!user) {
+      return res
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .json({ error: "No user supplied" }); // Return to stop further execution
+    }
+
+    if (user.role !== "AccountOwner") {
+      return res
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .json({ error: "User is not accountOwner" }); // Return to stop further execution
+    }
 
     const requests = await ShiftSwapRequest.find({
       status: "AdminPending",
-      venueId,
+      businessId: business,
     }).populate("fromEmployeeId toEmployeeId rotaId");
+
+    console.log("request", requests);
 
     res.status(StatusCodes.OK).json(requests);
   } catch (error) {

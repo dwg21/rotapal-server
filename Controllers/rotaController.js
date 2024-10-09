@@ -22,24 +22,26 @@ const getRotasByEmployeeId = async (req, res) => {
         .json({ message: "No user found for this ID" });
     }
 
-    const rota = await Rota.findOne({
-      venue: user.venue._id,
+    // checks  for any venue with ids from that list in user
+    const rota = await Rota.find({
+      venue: { $in: user.venue.map((v) => v._id) },
       weekStarting,
     });
 
-    if (!rota) {
+    console.log("Rotas found: ", rota);
+
+    // Filter out unpublished rotas
+    const publishedRotas = rota.filter((rota) => rota.published);
+
+    console.log("Published rotas: ", publishedRotas);
+    // Check if there are any published rotas
+    if (publishedRotas.length === 0) {
       return res
-        .status(StatusCodes.NOT_FOUND)
-        .json({ message: "Rota not found" });
+        .status(StatusCodes.OK)
+        .json({ message: "No published rotas found" });
     }
 
     console.log("Rota found:", rota);
-
-    if (!rota.published) {
-      return res
-        .status(StatusCodes.OK)
-        .json({ message: "This rota is not published yet" });
-    }
 
     res.status(StatusCodes.OK).json({ rota });
   } catch (error) {

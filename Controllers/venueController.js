@@ -5,14 +5,35 @@ const mongoose = require("mongoose");
 const User = require("../Models/User");
 const Rota = require("../Models/Rota");
 const Venue = require("../Models/Venue");
+const Business = require("../Models/Business");
 const { attachCookiesToResponse, createTokenUser } = require("../utils");
 
 const { createRota, generateWeeks } = require("../utils/rotaUtils");
 
 const createVenue = async (req, res) => {
   const { name, address, phone, openingHours, employees } = req.body;
+  const { userId } = req.user;
 
   try {
+    // Fetch the user by ID
+    const user = await User.findById(userId);
+
+    // Check if user exists
+    if (!user) {
+      return res
+        .status(StatusCodes.NOT_FOUND) // 404 for "No user found"
+        .json({ error: "No user supplied" });
+    }
+
+    const business = await Business.findById(user.business);
+
+    // Check if business exists
+    if (!business) {
+      return res
+        .status(StatusCodes.NOT_FOUND) // 404 for "No business found"
+        .json({ error: "No business found for this user" });
+    }
+
     // Check if a venue with the same name already exists
     const venueAlreadyExists = await Venue.findOne({ name });
     if (venueAlreadyExists) {
@@ -39,18 +60,20 @@ const createVenue = async (req, res) => {
       address,
       phone,
       openingHours,
-      createdBy: req.user.userId, // req.user is set by the authentication middleware
+      createdBy: userId, // Use userId from the authenticated user
     });
 
-    // Create employee accounts with default password "secret" and link them to the venue
+    business.venues.push(newVenue._id);
+
+    // Create employee accounts with default password and link them to the venue
     const employeePromises = employees.map(async (employee) => {
       const { name, email, hourlyWage } = employee;
-      const existingUser = await User.findOne({ email });
+      let existingUser = await User.findOne({ email });
 
       if (existingUser) {
         // Update existing user if found
         existingUser.hourlyWage = hourlyWage;
-        existingUser.venue = newVenue._id; // Link to newly created venue
+        existingUser.venue.push(newVenue._id); // Link to newly created venue
         return existingUser.save(); // Save and return updated user
       }
 
@@ -58,28 +81,27 @@ const createVenue = async (req, res) => {
       const newUser = await User.create({
         name,
         email,
-        password: "secret", // Ensure to hash the password in a real application
+        password: "secret", // Ensure password hashing happens in the relevant process
         role: "employee",
         hourlyWage, // Add hourly wage to the user object
         venue: newVenue._id, // Link to newly created venue
+        business: business._id, // Set the business field here
       });
 
-      return newUser; // Return newly created user
+      business.employees.push(newUser._id);
+      return newUser;
     });
 
     const createdEmployees = await Promise.all(employeePromises);
-
-    console.log("hshhshs", createdEmployees);
 
     // Generate the weeks and corresponding rotas
     const weeks = generateWeeks();
     const rotaPromises = weeks.map(async ({ startDate, days }) => {
       const weekRotaData = createRota(createdEmployees, days);
-      console.log("weekRotaData", weekRotaData);
 
       const newRota = await Rota.create({
         name: `${name} - Week starting ${startDate}`,
-        weekStarting: `${startDate}`,
+        weekStarting: startDate,
         rotaData: weekRotaData,
         venue: newVenue._id,
         employees: createdEmployees.map((emp) => emp._id), // Add employee IDs to the rota
@@ -89,7 +111,6 @@ const createVenue = async (req, res) => {
     });
 
     const rotaIds = await Promise.all(rotaPromises);
-    console.log("rotaIds", rotaIds);
 
     // Update each employee's rota field
     await Promise.all(
@@ -103,14 +124,16 @@ const createVenue = async (req, res) => {
     newVenue.employees = createdEmployees.map((emp) => emp._id);
     newVenue.rota = rotaIds;
     await newVenue.save();
+    await business.save();
 
     res.status(StatusCodes.CREATED).json({ venue: newVenue }); // Respond with the newly created venue
   } catch (error) {
-    console.error("Error creating venue:", error);
+    console.error("Error creating venue:", error.message);
+
     if (error.message.includes("Employee with email")) {
-      res.status(StatusCodes.BAD_REQUEST).json({ error: error.message });
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: error.message });
     } else {
-      res
+      return res
         .status(StatusCodes.INTERNAL_SERVER_ERROR)
         .json({ error: error.message });
     }
@@ -173,14 +196,16 @@ const registerAndCreateVenue = async (req, res) => {
             existingUser = await User.create({
               name,
               email,
-              password: "secret", // Ensure to hash passwords in real applications
+              password: "secret",
               role: "employee",
             });
           }
 
           // Link user as employee in venue
           existingUser.hourlyWage = hourlyWage;
-          existingUser.venue = newVenue._id; // Link to newly created venue
+          existingUser.venue.push(newVenue._id);
+
+          //existingUser.venue = newVenue._id;
           await existingUser.save();
 
           return existingUser;
@@ -250,11 +275,10 @@ const getAllVenues = async (req, res) => {
 
 const getVenueById = async (req, res) => {
   const { id } = req.params;
-  console.log("venueibebd", id);
-  console.log(req.params);
+  console.log("venue id given", id);
 
   try {
-    const venue = await Venue.findById(id);
+    const venue = await Venue.findById(id).populate("employees");
     if (!venue) {
       return res.status(404).json({ error: "Venue not found" });
     }
@@ -315,13 +339,13 @@ const deleteVenue = async (req, res) => {
 
 // Add a staff member to a venue
 const addStaff = async (req, res) => {
-  const { name, hourlyWage, shifts } = req.body;
-  const venue = await Venue.findById(req.params.id);
-  if (!venue) {
-    throw new CustomError.NotFoundError("Venue not found");
-  }
-  venue.employees.push({ name, hourlyWage, shifts });
+  const { id } = req.params;
+  const { employeeId } = req.body;
+  const venue = await Venue.findById(id);
+  venue.employees.push(employeeId);
   await venue.save();
+  console.log(venue);
+
   res.status(StatusCodes.OK).json({ venue });
 };
 
@@ -554,6 +578,52 @@ const removeCommonRota = async (req, res) => {
   }
 };
 
+const makeAdmin = async (req, res) => {
+  const { id: venueId } = req.params; // Get venue ID from URL parameters
+  const { staffId } = req.body; // Get staffId from the request body
+
+  try {
+    // Find the venue
+    const venue = await Venue.findById(venueId);
+    if (!venue) {
+      return res.status(StatusCodes.NOT_FOUND).json({ msg: "Venue not found" });
+    }
+
+    // Check if the staff member is already an admin
+    if (venue.rotaAdmins.includes(staffId)) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json({ msg: "Staff member is already an admin" });
+    }
+
+    // Add the staff member to rotaAdmins
+    venue.rotaAdmins.push(staffId);
+
+    await venue.save();
+    //Change the role of user account to admin
+
+    const user = await User.findById(staffId);
+
+    // Check if user exists
+    if (!user) {
+      return res
+        .status(StatusCodes.NOT_FOUND) // 404 for "No user found"
+        .json({ error: "No user supplied" });
+    }
+
+    user.role = "admin";
+
+    await user.save();
+
+    res.status(StatusCodes.OK).json({ msg: "Staff promoted to admin", venue });
+  } catch (error) {
+    console.error("Failed to promote staff:", error.message);
+    res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ error: "Failed to promote staff" });
+  }
+};
+
 module.exports = {
   createVenue,
   registerAndCreateVenue,
@@ -573,4 +643,5 @@ module.exports = {
   addCommonRota,
   removeCommonRota,
   getVenueEmployees,
+  makeAdmin,
 };

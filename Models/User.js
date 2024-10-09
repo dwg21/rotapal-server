@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 const validator = require("validator");
 const bcrypt = require("bcryptjs");
 
+//Venue refers to any venue rotas or extra rotas the employee is included in
+
 const UserSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -37,11 +39,19 @@ const UserSchema = new mongoose.Schema({
     required: false,
   },
 
-  venue: {
+  business: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Venue",
-    required: false,
+    ref: "Business",
+    required: true,
   },
+
+  venue: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Venue",
+      required: false,
+    },
+  ],
 
   rota: [
     {

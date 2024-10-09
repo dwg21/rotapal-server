@@ -20,6 +20,7 @@ const {
   addCommonRota,
   removeCommonRota,
   getVenueEmployees,
+  makeAdmin,
 } = require("../Controllers/venueController");
 
 const {
@@ -36,7 +37,7 @@ router.get("/venues", authenticateUser, getAllVenues);
 router.get("/venues/:id", authenticateUser, getVenueById);
 router.put("/venues/:id", authenticateUser, updateVenue);
 router.delete("/venues/:id", authenticateUser, deleteVenue);
-router.post("/venues/:id/staff", authenticateUser, addStaff);
+router.post("/venues/:id/addStaff", authenticateUser, addStaff);
 router.delete("/venues/:id/staff/:staffId", authenticateUser, removeStaff);
 router.post("/venues/:id/rota/:staffId", authenticateUser, addShift);
 router.delete(
@@ -58,5 +59,7 @@ router.get("/:venueId/common-rotas", authenticateUser, getCommonRotas);
 router.post("/:venueId/common-rotas", authenticateUser, addCommonRota);
 
 router.delete("/:venueId/common-rotas/:rotaId", removeCommonRota);
+
+router.post("/venues/:id/makeAdmin", authenticateUser, makeAdmin);
 
 module.exports = router;

@@ -16,6 +16,11 @@ const shiftSwapRequestSchema = new Schema({
     required: true,
   },
   rotaId: { type: mongoose.Schema.Types.ObjectId, ref: "Rota", required: true },
+  businessId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Business",
+    required: true,
+  },
   venueId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Venue",

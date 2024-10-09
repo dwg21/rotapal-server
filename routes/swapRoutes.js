@@ -23,7 +23,7 @@ router.get("/pendingShiftSwapRequests", authenticateUser, getPendingRequests);
 router.get("/getEmployeeRequests", authenticateUser, getEmployeeRequests);
 
 router.put(
-  "/employeeAproveShiftSwap/:requestId",
+  "/employeeApproveShiftSwap/:requestId",
   authenticateUser,
   employeeAproveShiftSwap
 );

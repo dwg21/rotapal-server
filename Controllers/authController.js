@@ -2,20 +2,84 @@ const User = require("../Models/User");
 const { StatusCodes } = require("http-status-codes");
 const CustomError = require("../errors");
 const { attachCookiesToResponse, createTokenUser } = require("../utils");
+const Business = require("../Models/Business");
 
 const register = async (req, res) => {
-  const { email, name, password } = req.body;
+  const { user, venue } = req.body;
+  const { email, name, password } = user;
+
+  // Check if the email already exists
   const emailAlreadyExists = await User.findOne({ email });
   if (emailAlreadyExists) {
-    throw new CustomError.BadRequestError("Email already exits");
+    throw new CustomError.BadRequestError("Email already exists");
   }
 
-  //first registered user is an admin
-  const isFirstAccount = (await User.countDocuments({})) === 0;
-  const role = isFirstAccount ? "admin" : "user";
+  const role = "AccountOwner";
 
-  const user = await User.create({ name, email, password, role });
-  const tokenUser = createTokenUser(user);
+  // Create the new user (but don't save yet)
+  const newUser = new User({ name, email, password, role });
+
+  let newBusiness;
+
+  if (venue) {
+    const { name, address, phone, openingHours, employees = [] } = venue;
+
+    // Check if a business with the same name already exists
+    const businessAlreadyExists = await Business.findOne({ name });
+    if (businessAlreadyExists) {
+      throw new CustomError.BadRequestError(
+        "Business with this name already exists"
+      );
+    }
+
+    // Create the new business (venue)
+    newBusiness = await Business.create({
+      name,
+      address,
+      phone,
+      openingHours,
+      createdBy: newUser._id,
+    });
+
+    // Now assign the business ID to the user
+    newUser.business = newBusiness._id;
+
+    // Optionally create employees if provided
+    if (employees.length > 0) {
+      const employeePromises = employees.map(async (employee) => {
+        const { name, email, hourlyWage } = employee;
+        let existingUser = await User.findOne({ email });
+
+        // Create a new user if not existing
+        if (!existingUser) {
+          existingUser = await User.create({
+            name,
+            email,
+            password: "secret", // Ensure to hash the password in a real application
+            role: "employee",
+            business: newBusiness._id,
+          });
+        } else {
+          // Link user as an employee in the venue
+          existingUser.hourlyWage = hourlyWage;
+          existingUser.venue.push(newBusiness._id); // Make sure to use newBusiness here
+        }
+
+        await existingUser.save();
+        return existingUser;
+      });
+
+      const createdEmployees = await Promise.all(employeePromises);
+      newBusiness.employees = createdEmployees.map((emp) => emp._id);
+      await newBusiness.save();
+    }
+  }
+
+  // Save the user after the business is assigned (if venue exists)
+  await newUser.save();
+
+  // Create tokenUser object AFTER business is assigned
+  const tokenUser = createTokenUser(newUser);
   attachCookiesToResponse({ res, user: tokenUser });
 
   res.status(StatusCodes.CREATED).json({ user: tokenUser });
@@ -64,7 +128,7 @@ const login = async (req, res, next) => {
 const logout = async (req, res) => {
   res.cookie("token", "logout", {
     httpOnly: true,
-    expires: new Date(Date.now()),
+    expires: new Date(0), // Set the expiration to a time in the past
   });
   res.status(StatusCodes.OK).json({ msg: "user logged out" });
 };

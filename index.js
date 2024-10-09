@@ -31,6 +31,7 @@ const notficationRouter = require("./routes/notficationRoutes");
 const swapRouter = require("./routes/swapRoutes");
 const holidayRouter = require("./routes/holidayRoutes");
 const employeeRouter = require("./routes/employeeRoutes.js");
+const buisnessRouter = require("./routes/businessRoutes.js");
 
 //middleware
 const notFoundMiddleware = require("./middleware/not-found");
@@ -49,6 +50,7 @@ app.use("/api/v1/rotas", rotaRouter);
 app.use("/api/v1/notifcations", notficationRouter);
 app.use("/api/v1/swap", swapRouter);
 app.use("/api/v1/holidays", holidayRouter);
+app.use("/api/v1/business", buisnessRouter);
 
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
