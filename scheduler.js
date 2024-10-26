@@ -154,8 +154,9 @@ const checkRotasExpired = async () => {
 
 //for testinng
 // Schedule the task to run every minute for testing purposes
-cron.schedule("* * * * *", checkAndCreateRotas);
-cron.schedule("0 0 * * *", checkRotasExpired);
+
+//cron.schedule("* * * * *", checkAndCreateRotas);
+//cron.schedule("0 0 * * *", checkRotasExpired);
 
 // Export the function to use it in your server file
 module.exports = { checkAndCreateRotas, checkRotasExpired };

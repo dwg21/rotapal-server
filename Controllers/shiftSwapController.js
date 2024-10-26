@@ -66,7 +66,7 @@ const sendShiftSwapRequest = async (req, res) => {
     });
 
     await shiftSwapRequest.save();
-    console.log(shiftSwapRequest);
+    // console.log(shiftSwapRequest);
 
     res
       .status(StatusCodes.OK)
@@ -112,7 +112,7 @@ const getPendingRequests = async (req, res) => {
       businessId: business,
     }).populate("fromEmployeeId toEmployeeId rotaId");
 
-    console.log("request", requests);
+    // console.log("request", requests);
 
     res.status(StatusCodes.OK).json(requests);
   } catch (error) {
@@ -155,9 +155,9 @@ const approveShiftSwap = async (req, res) => {
         .json({ message: "Shift swap request not found" });
     }
 
-    console.log("Shift swap request found:", request);
-    console.log("Type of request.rotaId:", typeof request.rotaId);
-    console.log("Looking for Rota with ID:", request.rotaId);
+    // console.log("Shift swap request found:", request);
+    // console.log("Type of request.rotaId:", typeof request.rotaId);
+    // console.log("Looking for Rota with ID:", request.rotaId);
 
     // Fetch the rota
     const rota = await Rota.findById(request.rotaId);
@@ -168,8 +168,6 @@ const approveShiftSwap = async (req, res) => {
         .status(StatusCodes.NOT_FOUND)
         .json({ message: "Rota not found" });
     }
-
-    console.log("Found Rota:", rota);
 
     // Find the employees and their shifts
     const fromEmployee = rota.rotaData.find((employee) =>

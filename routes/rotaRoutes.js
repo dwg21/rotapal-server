@@ -28,10 +28,12 @@ router.get(
   getRotasByEmployeeId
 );
 
+router.get("/rota/:weekStarting", authenticateUser, getRotaByVenueIdAndDate);
+
+// the ? makes venueId optional - where none is provided the  contorller will find the default venue
 router.get(
-  "/rota/:venueId/:weekStarting",
+  "/rota/:venueId?/:weekStarting",
   authenticateUser,
-  authoriseVenueAdmin,
   getRotaByVenueIdAndDate
 );
 

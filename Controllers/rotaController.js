@@ -6,6 +6,7 @@ const Notification = require("../Models/Notification");
 const { StatusCodes } = require("http-status-codes");
 const CustomError = require("../errors");
 const { generateWeeks, createRota } = require("../utils/rotaUtils");
+const Business = require("../Models/Business");
 
 const getRotasByEmployeeId = async (req, res) => {
   const { userId } = req.user;
@@ -67,11 +68,62 @@ const getArchivedRotasbyVenueId = async (req, res) => {
     console.log(err);
   }
 };
-
 const getRotaByVenueIdAndDate = async (req, res) => {
-  const { venueId, weekStarting } = req.params;
+  let { venueId, weekStarting } = req.params;
+  const { business } = req.user;
+
+  console.log("You are here");
+
+  console.log("Venue ID from params:", venueId);
+
+  // If no venueId is provided, or it's an invalid placeholder value, find the default venue
+  if (
+    !venueId ||
+    venueId === "null" ||
+    venueId === "undefined" ||
+    venueId === "default" ||
+    venueId === ""
+  ) {
+    console.log("No valid venue ID was given, fetching default venue");
+
+    try {
+      // Fetch the business details using the business ID from the user
+      const businessDetails = await Business.findById(business);
+
+      // Ensure the business has at least one venue
+      if (
+        businessDetails &&
+        businessDetails.venues &&
+        businessDetails.venues.length > 0
+      ) {
+        venueId = businessDetails.venues[0]; // Set to default venue
+      } else {
+        return res.status(StatusCodes.BAD_REQUEST).json({
+          success: false,
+          message: "No venues found for this business",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching business:", error);
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        message: "Error fetching business details",
+      });
+    }
+  }
+
+  console.log("The final venue ID is:", venueId);
 
   try {
+    // Validate the venueId to ensure it's a proper ObjectId
+    // if (!mongoose.Types.ObjectId.isValid(venueId)) {
+    //   return res.status(StatusCodes.BAD_REQUEST).json({
+    //     success: false,
+    //     message: "Invalid venue ID",
+    //   });
+    //}
+
+    // Fetch the rota by venue ID and weekStarting date
     const rota = await Rota.findOne({ venue: venueId, weekStarting });
 
     if (!rota) {
@@ -93,6 +145,7 @@ const getRotaByVenueIdAndDate = async (req, res) => {
       });
     }
 
+    // Return the found rota
     res.status(StatusCodes.OK).json({
       success: true,
       rota,
@@ -101,7 +154,7 @@ const getRotaByVenueIdAndDate = async (req, res) => {
     console.error("Error fetching rota:", error);
     res.status(StatusCodes.BAD_REQUEST).json({
       success: false,
-      message: "Invalid venue ID",
+      message: "Error fetching rota",
     });
   }
 };
