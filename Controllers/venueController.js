@@ -7,6 +7,7 @@ const Rota = require("../Models/Rota");
 const Venue = require("../Models/Venue");
 const Business = require("../Models/Business");
 const { attachCookiesToResponse, createTokenUser } = require("../utils");
+const findDefaultVenueId = require("../utils/findDefaultVenueId");
 
 const { createRota, generateWeeks } = require("../utils/rotaUtils");
 
@@ -419,10 +420,20 @@ const updateRota = async (req, res) => {
 
 // Fetch common shifts for a venue
 const getCommonShifts = async (req, res) => {
-  const { venueId } = req.params;
+  let { venueId } = req.params;
   console.log("hhe", venueId);
+  const { business } = req.user;
 
   try {
+    //If no valid venueId is provided returns the defualt for user
+    venueId = await findDefaultVenueId(venueId, business);
+
+    if (!venueId) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        message: "No valid venue ID could be determined",
+      });
+    }
     const venue = await Venue.findById(venueId);
     if (!venue) {
       throw new CustomError.NotFoundError("Venue not found");
@@ -514,10 +525,21 @@ const removeCommonShift = async (req, res) => {
 
 // Fetch common shifts for a venue
 const getCommonRotas = async (req, res) => {
-  const { venueId } = req.params;
+  let { venueId } = req.params;
+  const { business } = req.user;
+
   console.log("hhe", venueId);
 
   try {
+    //If no valid venueId is provided returns the defualt for user
+    venueId = await findDefaultVenueId(venueId, business);
+
+    if (!venueId) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        message: "No valid venue ID could be determined",
+      });
+    }
     const venue = await Venue.findById(venueId);
     if (!venue) {
       throw new CustomError.NotFoundError("Venue not found");
