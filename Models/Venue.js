@@ -39,6 +39,10 @@ const venueSchema = new Schema({
       totalHolidayCost: Number,
     },
   ],
+  business: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Business",
+  },
   commonShifts: {
     type: [
       {

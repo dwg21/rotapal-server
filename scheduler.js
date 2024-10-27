@@ -1,8 +1,12 @@
 const cron = require("node-cron");
-const Rota = require("./Models/Rota"); // Adjust the path as needed
-const Venue = require("./Models/Venue"); // Adjust the path as needed
+const Rota = require("./Models/Rota");
+const Venue = require("./Models/Venue");
+const Business = require("./Models/Business");
+
 const { generateWeeks, createRota } = require("./utils/rotaUtils"); // Ensure these utility functions are available
 const { startOfWeek, isBefore, parseISO } = require("date-fns");
+const calculateStatistics = require("./utils/statisticsUtils");
+
 // Function to check and create new rotas
 const checkAndCreateRotas = async () => {
   try {
@@ -48,46 +52,6 @@ const checkAndCreateRotas = async () => {
   } catch (error) {
     console.error("Error in scheduled rota creation:", error);
   }
-};
-
-const calculateStatistics = (rota) => {
-  let totalStaffHours = 0;
-  let totalStaffCost = 0;
-  let totalHolidayDays = 0;
-  let totalHolidayCost = 0;
-
-  rota.rotaData.forEach((data) => {
-    const hourlyWage = data.hourlyWage;
-    data.schedule.forEach((shift) => {
-      const startTime = new Date(`1970-01-01T${shift.shiftData.startTime}Z`);
-      const endTime = new Date(`1970-01-01T${shift.shiftData.endTime}Z`);
-
-      // Ensure valid start and end times
-      if (!isNaN(startTime) && !isNaN(endTime) && startTime < endTime) {
-        const hoursWorked = (endTime - startTime) / (1000 * 60 * 60);
-        totalStaffHours += hoursWorked;
-        totalStaffCost += hoursWorked * hourlyWage;
-      }
-
-      if (shift.holidayBooked) {
-        totalHolidayDays += 1;
-        totalHolidayCost += 8 * hourlyWage; // 8 hours per holiday day
-      }
-    });
-  });
-
-  // Handle cases where calculations might result in NaN
-  totalStaffHours = isNaN(totalStaffHours) ? 0 : totalStaffHours;
-  totalStaffCost = isNaN(totalStaffCost) ? 0 : totalStaffCost;
-  totalHolidayDays = isNaN(totalHolidayDays) ? 0 : totalHolidayDays;
-  totalHolidayCost = isNaN(totalHolidayCost) ? 0 : totalHolidayCost;
-
-  return {
-    totalStaffHours,
-    totalStaffCost,
-    totalHolidayDays,
-    totalHolidayCost,
-  };
 };
 
 const updateVenueStatistics = async (rota) => {
@@ -149,6 +113,73 @@ const checkRotasExpired = async () => {
   }
 };
 
+//Temprrary for checking changes made to stats is correct
+
+// const updateArchivedVenueStatistics = async () => {
+//   try {
+//     console.log("Starting to update archived venue statistics...");
+
+//     // Find all archived rotas
+//     const archivedRotas = await Rota.find({ archived: true });
+//     console.log(`Found ${archivedRotas.length} archived rotas.`);
+
+//     for (const rota of archivedRotas) {
+//       console.log(`Processing rota: ${rota._id}`);
+
+//       // Get the venue for this rota
+//       const venue = await Venue.findById(rota.venue);
+//       if (!venue) {
+//         console.error(`Missing venue for rota ${rota._id}`);
+//         continue; // Skip if the venue is not found
+//       }
+//       console.log(`Found venue: ${venue.name} (ID: ${venue._id})`);
+
+//       // Find the associated business using the venue's business ID
+//       const business = await Business.findById(venue.business);
+//       if (!business) {
+//         console.error(`Missing business for venue ${venue._id}`);
+//         continue; // Skip if the business is not found
+//       }
+//       console.log(`Found business: ${business.name} (ID: ${business._id})`);
+
+//       // Ensure venueStatistics is initialized
+//       if (!business.venueStatistics) {
+//         business.venueStatistics = new Map();
+//       }
+
+//       // Iterate over venue statistics and copy them to the business model
+//       for (const stat of venue.statistics) {
+//         const statsRef = stat._id; // Get the ObjectId of the statistics
+
+//         // Check if this venue's ID is already a key in the business's venueStatistics Map
+//         if (!business.venueStatistics.has(venue._id.toString())) {
+//           console.log(
+//             `Creating entry for venue ${venue._id} in business ${business._id}.`
+//           );
+
+//           // Initialize a new entry for this venue in the Map
+//           business.venueStatistics.set(venue._id.toString(), []);
+//         }
+
+//         // Push the statistics reference into the corresponding venue's entry
+//         business.venueStatistics.get(venue._id.toString()).push(statsRef);
+//         console.log(
+//           `Added statistics reference ${statsRef} for venue ${venue._id}.`
+//         );
+//       }
+
+//       await business.save(); // Save the business document
+//       console.log(`Saved updated statistics for business ${business._id}.`);
+//     }
+
+//     console.log("Finished updating archived venue statistics.");
+//   } catch (error) {
+//     console.error("Error updating archived venue statistics:", error);
+//   }
+// };
+
+//cron.schedule("* * * * *", updateArchivedVenueStatistics);
+
 // Schedule the task to run daily at midnight
 //cron.schedule("0 0 * * *", checkAndCreateRotas);
 
@@ -159,4 +190,7 @@ const checkRotasExpired = async () => {
 //cron.schedule("0 0 * * *", checkRotasExpired);
 
 // Export the function to use it in your server file
-module.exports = { checkAndCreateRotas, checkRotasExpired };
+module.exports = {
+  checkAndCreateRotas,
+  checkRotasExpired,
+};

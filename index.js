@@ -1,8 +1,13 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const { checkAndCreateRotas, checkRotasExpired } = require("./scheduler");
+const {
+  checkAndCreateRotas,
+  checkRotasExpired,
+  updateArchivedVenueStatistics,
+} = require("./scheduler");
 require("dotenv").config();
+const Venue = require("./Models/Venue"); // Adjust the path as needed
 
 const app = express();
 
@@ -54,6 +59,9 @@ app.use("/api/v1/business", buisnessRouter);
 
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
+
+//temp
+//updateArchivedVenueStatistics();
 
 const port = process.env.PORT || 5000;
 const start = async () => {

@@ -61,7 +61,8 @@ const createVenue = async (req, res) => {
       address,
       phone,
       openingHours,
-      createdBy: userId, // Use userId from the authenticated user
+      createdBy: userId, // Use userId from the authenticated user,
+      business,
     });
 
     business.venues.push(newVenue._id);

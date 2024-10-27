@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const User = require("../Models/User");
 const Business = require("../Models/Business");
 const { StatusCodes } = require("http-status-codes");
@@ -84,4 +85,60 @@ const addNewEmployee = async (req, res) => {
   }
 };
 
-module.exports = { getBusinessEmployees, addNewEmployee };
+const getBusinessStatistics = async (req, res) => {
+  const { business: businessId } = req.user;
+
+  try {
+    if (!mongoose.isValidObjectId(businessId)) {
+      return res.status(400).json({ message: "Invalid business ID" });
+    }
+
+    const business = await Business.findById(businessId).populate("venues");
+
+    if (!business) {
+      return res.status(404).json({ message: "Business not found" });
+    }
+
+    // Log the venues to inspect the statistics
+    console.log("Venues:", business.venues);
+
+    // Grouping statistics by venue
+    const groupedStatistics = {};
+
+    business.venues.forEach((venue) => {
+      venue.statistics.forEach((stat) => {
+        const venueId = venue._id.toString(); // Ensure venue ID is a string
+        const venueName = venue.name;
+
+        // Initialize the venue key if it doesn't exist
+        if (!groupedStatistics[venueId]) {
+          groupedStatistics[venueId] = {
+            venueName,
+            statistics: [],
+          };
+        }
+
+        // Push the current stat to the relevant venue
+        groupedStatistics[venueId].statistics.push({
+          weekStarting: stat.weekStarting,
+          totalStaffHours: stat.totalStaffHours,
+          totalStaffCost: stat.totalStaffCost,
+          totalHolidayDays: stat.totalHolidayDays,
+          totalHolidayCost: stat.totalHolidayCost,
+        });
+      });
+    });
+
+    console.log("Grouped Statistics:", groupedStatistics); // Check the grouped statistics
+    return res.status(200).json({ statistics: groupedStatistics });
+  } catch (error) {
+    console.error("Error retrieving business statistics:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+module.exports = {
+  getBusinessEmployees,
+  addNewEmployee,
+  getBusinessStatistics,
+};
