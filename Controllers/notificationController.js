@@ -4,8 +4,10 @@ const { StatusCodes } = require("http-status-codes");
 
 // Create a new notification
 const createNotification = async (req, res) => {
+  const { business: businessId } = req.user;
   try {
-    const { message, link, notifyType, senderId, recipientIds } = req.body;
+    const { message, link, notifyType, senderId, recipientIds, venueId } =
+      req.body;
 
     // Ensure recipientIds is an array and not empty
     if (!Array.isArray(recipientIds) || recipientIds.length === 0) {
@@ -21,6 +23,8 @@ const createNotification = async (req, res) => {
       notifyType,
       senderId,
       recipientIds,
+      venueId,
+      businessId,
     });
 
     // Save the notification to the database

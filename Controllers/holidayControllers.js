@@ -43,10 +43,8 @@ const updateExistingRotas = async ({ userId, holidayDate }) => {
 };
 
 const createHolidayRequest = async (req, res) => {
-  const { date, venueId } = req.body; // Including venueId in the request
-  const { userId } = req.user;
-
-  console.log("venueId", venueId);
+  const { date } = req.body; // Including venueId in the request
+  const { userId, business: businessId } = req.user;
 
   try {
     const holidayDate = new Date(date);
@@ -70,9 +68,9 @@ const createHolidayRequest = async (req, res) => {
     // Create the holiday request with status 'Pending'
     const newHoliday = await Holiday.create({
       user: userId,
-      venueId,
       date,
       status: "Pending",
+      businessId,
     });
 
     // Notify user that their request has been sent for approval

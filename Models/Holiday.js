@@ -6,8 +6,13 @@ const holidaySchema = new Schema({
   venueId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Venue",
+  },
+  businessId: {
+    type: Schema.Types.ObjectId,
+    ref: "Business",
     required: true,
-  }, // New field
+  },
+
   date: { type: String, required: true },
   status: {
     type: String,

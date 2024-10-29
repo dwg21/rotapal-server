@@ -28,6 +28,15 @@ const NotificationSchema = new Schema({
   recipientId: {
     type: Schema.Types.ObjectId,
   },
+  venueId: {
+    type: Schema.Types.ObjectId,
+    ref: "Venue",
+    required: false, // This makes the  field optional
+  },
+  businessId: {
+    type: Schema.Types.ObjectId,
+    ref: "Business",
+  },
 });
 
 module.exports = mongoose.model("Notification", NotificationSchema);

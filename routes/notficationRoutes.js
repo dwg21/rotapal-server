@@ -12,7 +12,7 @@ const {
 } = require("../middleware/authentication");
 
 router.get(
-  "/getNotfications",
+  "/getNotifications",
   authenticateUser,
   getEmployeeNotificationsByUserId
 );

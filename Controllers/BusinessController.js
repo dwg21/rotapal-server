@@ -1,6 +1,10 @@
 const mongoose = require("mongoose");
 const User = require("../Models/User");
 const Business = require("../Models/Business");
+const Notification = require("../Models/Notification");
+const ShiftSwapRequest = require("../Models/ShiftSwapRequest");
+const Holiday = require("../Models/Holiday");
+
 const { StatusCodes } = require("http-status-codes");
 
 const getBusinessEmployees = async (req, res) => {
@@ -137,8 +141,47 @@ const getBusinessStatistics = async (req, res) => {
   }
 };
 
+const getBusinessNotifications = async (req, res) => {
+  const { business: businessId } = req.user;
+  const { venueId } = req.params;
+
+  try {
+    let Notifications;
+    let ShiftSwapRequests;
+    let holidays;
+
+    if (venueId) {
+      Notifications = await Notification.find({ businessId, venueId });
+      ShiftSwapRequests = await ShiftSwapRequest.find({
+        businessId,
+        venueId,
+        status: "AdminPending",
+      });
+      holidays = await Holiday.find({ businessId, venueId, status: "Pending" });
+    } else {
+      Notifications = await Notification.find({
+        businessId,
+      });
+      ShiftSwapRequests = await ShiftSwapRequest.find({
+        businessId,
+        status: "AdminPending",
+      });
+      holidays = await Holiday.find({ businessId, status: "Pending" });
+    }
+    return res.status(200).json({
+      Notifications: Notifications,
+      swapRequests: ShiftSwapRequests,
+      holidays,
+    });
+  } catch (error) {
+    console.error("Error retrieving business Notification:", error);
+    return res.status(500).json({ message: "Notification error" });
+  }
+};
+
 module.exports = {
   getBusinessEmployees,
   addNewEmployee,
   getBusinessStatistics,
+  getBusinessNotifications,
 };
