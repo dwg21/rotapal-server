@@ -10,7 +10,7 @@ const calculateStatistics = require("./utils/statisticsUtils");
 // Function to check and create new rotas
 const checkAndCreateRotas = async () => {
   try {
-    const venues = await Venue.find();
+    const venues = await Venue.find().populate("employees");
 
     for (const venue of venues) {
       const now = new Date();

@@ -144,14 +144,14 @@ const approveHoliday = async (req, res) => {
 };
 
 const getUserPendingHolidays = async (req, res) => {
-  const { userId } = req.params; // Assuming userId is passed as a URL parameter
+  const { userId } = req.user;
 
   try {
     // Fetch all pending holidays for the given userId
     const pendingHolidays = await Holiday.find({
       user: userId,
       status: "Pending",
-    }).populate("user", "name email");
+    });
 
     // Check if there are any pending holidays
     if (pendingHolidays.length === 0) {

@@ -162,11 +162,13 @@ const getBusinessNotifications = async (req, res) => {
       Notifications = await Notification.find({
         businessId,
       });
+
       ShiftSwapRequests = await ShiftSwapRequest.find({
         businessId,
         status: "AdminPending",
       });
       holidays = await Holiday.find({ businessId, status: "Pending" });
+      console.log("***********", holidays);
     }
     return res.status(200).json({
       Notifications: Notifications,

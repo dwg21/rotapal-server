@@ -17,5 +17,6 @@ const {
 router.post("/book-holiday", authenticateUser, createHolidayRequest);
 router.put("/approveHoliday/:holidayId", authenticateUser, approveHoliday);
 router.get("/getVenueHolidays/:venueId", authenticateUser, getVenueHolidays);
+router.get("/getUserHolidays", authenticateUser, getUserPendingHolidays);
 
 module.exports = router;
